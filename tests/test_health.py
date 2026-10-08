@@ -1,13 +1,21 @@
-from fastapi.testclient import TestClient
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 from homelab_pulse.main import app
 
 
-client = TestClient(app)
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
 
 
-def test_health_check_returns_application_status() -> None:
-    response = client.get("/api/v1/health")
+@pytest.mark.anyio
+async def test_health_check_returns_application_status() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/v1/health")
 
     assert response.status_code == 200
     payload = response.json()
@@ -18,8 +26,13 @@ def test_health_check_returns_application_status() -> None:
     assert payload["timestamp"]
 
 
-def test_openapi_documentation_is_available() -> None:
-    response = client.get("/docs")
+@pytest.mark.anyio
+async def test_openapi_documentation_is_available() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/docs")
 
     assert response.status_code == 200
     assert "swagger-ui" in response.text
