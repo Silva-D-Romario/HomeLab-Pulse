@@ -1,0 +1,43 @@
+services:
+  api:
+    build: .
+    environment:
+      APP_ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: homelab_pulse
+      POSTGRES_USER: homelab_pulse
+      POSTGRES_PASSWORD: homelab_pulse
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homelab_pulse -d homelab_pulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
