@@ -3,8 +3,10 @@ services:
     build: .
     environment:
       APP_ENVIRONMENT: development
+      APP_VERSION: 0.2.0
       DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
       REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: development-secret-change-before-production
     ports:
       - "8000:8000"
     depends_on:

@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.db
 .coverage
 .env
 .mypy_cache/
@@ -9,4 +10,3 @@ __pycache__/
 .venv/
 coverage.xml
 htmlcov/
-
