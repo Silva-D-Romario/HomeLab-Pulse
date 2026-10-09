@@ -25,7 +25,7 @@ flowchart LR
 
 ## Isolamento dos dados
 
-Servidores, serviços, métricas e incidentes terão um proprietário. Todas as consultas autenticadas deverão aplicar o identificador do usuário, impedindo que uma conta leia ou altere recursos de outra.
+Cada servidor possui um proprietário e cada serviço pertence a um servidor. Todas as consultas autenticadas aplicam o identificador do usuário. Assim, uma conta não consegue listar, consultar, alterar ou excluir recursos de outra. A API retorna `404` nesses casos para não confirmar a existência do recurso.
 
 ## Autenticação e autorização
 

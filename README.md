@@ -2,7 +2,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 2 concluída — usuários, autenticação JWT e autorização por perfil.
+> Status: etapa 3 concluída — servidores e serviços isolados por usuário.
 
 ## O que o projeto demonstrará
 
@@ -43,7 +43,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -92,6 +92,28 @@ docker compose exec api python -m homelab_pulse.cli create-admin \
 
 A senha é solicitada sem aparecer no terminal. Contas criadas pela rota pública sempre recebem o perfil comum.
 
+## Servidores e serviços
+
+Após autenticar, cada usuário pode gerenciar apenas os próprios recursos:
+
+- `POST/GET /api/v1/servers`: cria e lista servidores.
+- `GET/PATCH/DELETE /api/v1/servers/{id}`: gerencia um servidor.
+- `POST/GET /api/v1/servers/{id}/services`: cria e lista serviços do servidor.
+- `GET/PATCH/DELETE /api/v1/services/{id}`: gerencia um serviço.
+
+Os tipos disponíveis são `http`, `docker`, `jellyfin`, `portainer` e `arr`. Recursos de outro usuário retornam `404`, sem revelar se realmente existem.
+
+Exemplo de serviço:
+
+```json
+{
+  "name": "Jellyfin",
+  "kind": "jellyfin",
+  "target_url": "http://jellyfin:8096",
+  "enabled": true
+}
+```
+
 ## Estrutura inicial
 
 ```text
@@ -119,7 +141,7 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 
 - [x] Etapa 1 — fundação FastAPI, testes, Docker, CI e documentação.
 - [x] Etapa 2 — usuários, autenticação JWT e autorização por perfil.
-- [ ] Etapa 3 — cadastro de servidores e serviços com isolamento por usuário.
+- [x] Etapa 3 — cadastro de servidores e serviços com isolamento por usuário.
 - [ ] Etapa 4 — monitor HTTP e agente Docker somente leitura.
 - [ ] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
 - [ ] Etapa 6 — dashboard com indicadores e gráficos Plotly.
