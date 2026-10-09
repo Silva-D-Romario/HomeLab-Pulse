@@ -33,4 +33,4 @@ As senhas são armazenadas somente como hashes Argon2. Após o login, a API emit
 
 ## Segurança do Docker
 
-O socket Docker não será exposto diretamente à aplicação web. A coleta usará um agente restrito ou um proxy de socket com apenas as operações de leitura necessárias. Tokens de integrações serão recebidos por variáveis de ambiente e nunca versionados.
+O socket Docker não é exposto diretamente à aplicação web. O agente acessa um proxy interno com somente os endpoints de leitura necessários e `POST=0`. O proxy não publica portas no host. O agente exige token Bearer, escuta apenas no loopback por padrão e pode ser disponibilizado por uma VPN privada. Tokens são recebidos por variáveis de ambiente e nunca versionados.

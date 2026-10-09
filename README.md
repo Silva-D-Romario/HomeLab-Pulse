@@ -2,7 +2,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 3 concluída — servidores e serviços isolados por usuário.
+> Status: etapa 4 concluída — monitor HTTP e agente Docker somente leitura.
 
 ## O que o projeto demonstrará
 
@@ -43,7 +43,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -114,6 +114,25 @@ Exemplo de serviço:
 }
 ```
 
+## Monitoramento HTTP
+
+- `POST /api/v1/services/{id}/check`: executa uma verificação imediata.
+- `GET /api/v1/services/{id}/checks`: retorna o histórico mais recente.
+
+Cada verificação registra disponibilidade, código HTTP, latência e erro. O histórico também respeita o proprietário do serviço.
+
+## Agente Docker
+
+O agente coleta nomes, imagens e estados dos containers sem receber acesso de escrita. Defina um `AGENT_TOKEN` forte no arquivo `.env` e execute:
+
+```bash
+docker compose -f agent-compose.yaml up --build -d
+```
+
+O endpoint `GET /api/v1/containers` exige o token Bearer. A API Docker fica isolada atrás do `docker-socket-proxy`, configurado com `POST=0`, e nunca é publicada diretamente. Por padrão, o agente responde somente em `127.0.0.1:8001`.
+
+Consulte [a documentação de segurança do agente](docs/docker-agent.md) antes de liberar acesso por VPN ou proxy reverso.
+
 ## Estrutura inicial
 
 ```text
@@ -142,7 +161,7 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 - [x] Etapa 1 — fundação FastAPI, testes, Docker, CI e documentação.
 - [x] Etapa 2 — usuários, autenticação JWT e autorização por perfil.
 - [x] Etapa 3 — cadastro de servidores e serviços com isolamento por usuário.
-- [ ] Etapa 4 — monitor HTTP e agente Docker somente leitura.
+- [x] Etapa 4 — monitor HTTP e agente Docker somente leitura.
 - [ ] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
 - [ ] Etapa 6 — dashboard com indicadores e gráficos Plotly.
 - [ ] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
