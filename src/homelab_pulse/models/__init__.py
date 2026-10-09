@@ -1,5 +1,7 @@
 from homelab_pulse.models.base import Base
+from homelab_pulse.models.server import Server
+from homelab_pulse.models.service import Service, ServiceKind
 from homelab_pulse.models.user import User, UserRole
 
-__all__ = ["Base", "User", "UserRole"]
+__all__ = ["Base", "Server", "Service", "ServiceKind", "User", "UserRole"]
 
