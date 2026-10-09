@@ -4,11 +4,6 @@ from httpx import ASGITransport, AsyncClient
 from homelab_pulse.main import app
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
-
 @pytest.mark.anyio
 async def test_health_check_returns_application_status() -> None:
     async with AsyncClient(
@@ -21,7 +16,7 @@ async def test_health_check_returns_application_status() -> None:
     payload = response.json()
     assert payload["application"] == "HomeLab Pulse"
     assert payload["environment"] == "development"
-    assert payload["version"] == "0.1.0"
+    assert payload["version"] == "0.2.0"
     assert payload["status"] == "UP"
     assert payload["timestamp"]
 

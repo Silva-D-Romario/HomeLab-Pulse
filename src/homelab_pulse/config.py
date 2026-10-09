@@ -6,7 +6,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "HomeLab Pulse"
     app_environment: str = "development"
-    app_version: str = "0.1.0"
+    app_version: str = "0.2.0"
+    database_url: str = "sqlite+aiosqlite:///./homelab_pulse.db"
+    jwt_secret: str = "change-this-secret-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -18,4 +22,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
