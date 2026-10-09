@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from homelab_pulse.database import get_db
-from homelab_pulse.models.user import User
+from homelab_pulse.models.user import User, UserRole
 from homelab_pulse.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -41,3 +41,14 @@ async def get_current_user(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
+
+async def get_current_admin(current_user: CurrentUser) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator permission required",
+        )
+    return current_user
+
+
+AdminUser = Annotated[User, Depends(get_current_admin)]

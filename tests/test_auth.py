@@ -1,5 +1,9 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from homelab_pulse.models.user import User, UserRole
 
 USER_PAYLOAD = {
     "name": "Romário Silva",
@@ -79,3 +83,45 @@ async def test_protects_profile_endpoint(
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Authentication required"
+
+
+@pytest.mark.anyio
+async def test_regular_user_cannot_list_users(client: AsyncClient) -> None:
+    await client.post("/api/v1/auth/register", json=USER_PAYLOAD)
+    login_response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": USER_PAYLOAD["email"], "password": USER_PAYLOAD["password"]},
+    )
+    token = login_response.json()["access_token"]
+
+    response = await client.get(
+        "/api/v1/users",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Administrator permission required"
+
+
+@pytest.mark.anyio
+async def test_admin_can_list_users(client: AsyncClient, db_session: AsyncSession) -> None:
+    await client.post("/api/v1/auth/register", json=USER_PAYLOAD)
+    user = await db_session.scalar(select(User).where(User.email == USER_PAYLOAD["email"]))
+    assert user is not None
+    user.role = UserRole.ADMIN
+    await db_session.commit()
+
+    login_response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": USER_PAYLOAD["email"], "password": USER_PAYLOAD["password"]},
+    )
+    token = login_response.json()["access_token"]
+
+    response = await client.get(
+        "/api/v1/users",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["role"] == "admin"
