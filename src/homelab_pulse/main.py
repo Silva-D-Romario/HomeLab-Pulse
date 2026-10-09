@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from homelab_pulse.api.auth import router as auth_router
 from homelab_pulse.api.health import router as health_router
+from homelab_pulse.api.monitoring import router as monitoring_router
 from homelab_pulse.api.servers import router as servers_router
 from homelab_pulse.api.services import router as services_router
 from homelab_pulse.api.users import router as users_router
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
     )
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(health_router, prefix="/api/v1")
+    application.include_router(monitoring_router, prefix="/api/v1")
     application.include_router(servers_router, prefix="/api/v1")
     application.include_router(services_router, prefix="/api/v1")
     application.include_router(users_router, prefix="/api/v1")
