@@ -4,11 +4,6 @@ from httpx import ASGITransport, AsyncClient
 from homelab_pulse.main import app
 
 
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
-
-
 @pytest.mark.anyio
 async def test_health_check_returns_application_status() -> None:
     async with AsyncClient(
