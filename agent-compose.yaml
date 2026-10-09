@@ -18,6 +18,7 @@ services:
       - docker-proxy
     networks:
       - agent_internal
+      - agent_access
 
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
@@ -34,3 +35,4 @@ services:
 networks:
   agent_internal:
     internal: true
+  agent_access:
