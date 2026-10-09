@@ -27,6 +27,10 @@ flowchart LR
 
 Servidores, serviços, métricas e incidentes terão um proprietário. Todas as consultas autenticadas deverão aplicar o identificador do usuário, impedindo que uma conta leia ou altere recursos de outra.
 
+## Autenticação e autorização
+
+As senhas são armazenadas somente como hashes Argon2. Após o login, a API emite um JWT com validade configurável. Rotas privadas validam o token e carregam o usuário diretamente do banco. O cadastro público sempre cria contas comuns; ações administrativas exigem o perfil `admin`, criado por um comando executado no servidor.
+
 ## Segurança do Docker
 
 O socket Docker não será exposto diretamente à aplicação web. A coleta usará um agente restrito ou um proxy de socket com apenas as operações de leitura necessárias. Tokens de integrações serão recebidos por variáveis de ambiente e nunca versionados.
