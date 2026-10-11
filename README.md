@@ -2,7 +2,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 4 concluída — monitor HTTP e agente Docker somente leitura.
+> Status: etapa 5 concluída — incidentes automáticos e monitoramento agendado com Celery/Redis.
 
 ## O que o projeto demonstrará
 
@@ -43,7 +43,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -55,7 +55,7 @@ Resposta esperada do health check:
 docker compose up --build
 ```
 
-O Compose prepara a API, PostgreSQL e Redis. Os dados locais são mantidos em volumes Docker.
+O Compose prepara a API, PostgreSQL, Redis, o worker Celery e o agendador Celery Beat. Os dados locais são mantidos em volumes Docker.
 
 ## Autenticação
 
@@ -121,6 +121,21 @@ Exemplo de serviço:
 
 Cada verificação registra disponibilidade, código HTTP, latência e erro. O histórico também respeita o proprietário do serviço.
 
+## Incidentes e execução agendada
+
+O Celery Beat agenda a verificação de todos os serviços habilitados. O worker executa as sondagens usando o Redis como fila:
+
+- a primeira resposta `DOWN` abre um incidente;
+- novas falhas não duplicam um incidente ainda aberto;
+- a primeira resposta `UP` seguinte resolve o incidente automaticamente.
+
+Principais rotas:
+
+- `GET /api/v1/incidents`: lista os incidentes do usuário; aceita `?status=open` ou `?status=resolved`.
+- `GET /api/v1/services/{id}/incidents`: lista o histórico de incidentes de um serviço.
+
+O intervalo padrão é de 60 segundos e pode ser alterado com `MONITOR_INTERVAL_SECONDS`.
+
 ## Agente Docker
 
 O agente coleta nomes, imagens e estados dos containers sem receber acesso de escrita. Defina um `AGENT_TOKEN` forte no arquivo `.env` e execute:
@@ -140,6 +155,9 @@ src/homelab_pulse/
 ├── api/             # Rotas HTTP
 ├── models/          # Entidades persistidas pelo SQLAlchemy
 ├── schemas/         # Contratos de entrada e saída
+├── monitoring/      # Sondagem HTTP e ciclo de incidentes
+├── celery_app.py    # Fila e agendamento periódico
+├── tasks.py         # Tarefas executadas pelo worker
 ├── database.py      # Sessões assíncronas de banco
 ├── security.py      # Hash de senha e tokens JWT
 ├── config.py        # Configuração por variáveis de ambiente
@@ -162,7 +180,7 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 - [x] Etapa 2 — usuários, autenticação JWT e autorização por perfil.
 - [x] Etapa 3 — cadastro de servidores e serviços com isolamento por usuário.
 - [x] Etapa 4 — monitor HTTP e agente Docker somente leitura.
-- [ ] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
+- [x] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
 - [ ] Etapa 6 — dashboard com indicadores e gráficos Plotly.
 - [ ] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
 - [ ] Etapa 8 — segurança, cobertura de testes, documentação e deploy.

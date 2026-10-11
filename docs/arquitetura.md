@@ -11,6 +11,8 @@ flowchart LR
     C --> G[Agente Docker somente leitura]
     H --> S[Serviços do homelab]
     G --> X[Containers Docker]
+    H --> I[Ciclo de incidentes]
+    I --> P
     C --> P
 ```
 
@@ -20,6 +22,7 @@ flowchart LR
 - **PostgreSQL:** usuários, servidores, serviços, métricas e incidentes.
 - **Redis/Celery:** fila e execução periódica das verificações.
 - **Monitor HTTP:** disponibilidade, latência e código de resposta.
+- **Ciclo de incidentes:** abre um incidente na primeira falha, evita duplicidade enquanto ele está aberto e o resolve na recuperação do serviço.
 - **Agente Docker:** coleta somente leitura do estado e do consumo dos containers.
 - **Plotly Dash:** visualização dos indicadores obtidos pela API.
 
@@ -34,3 +37,7 @@ As senhas são armazenadas somente como hashes Argon2. Após o login, a API emit
 ## Segurança do Docker
 
 O socket Docker não é exposto diretamente à aplicação web. O agente acessa um proxy interno com somente os endpoints de leitura necessários e `POST=0`. O proxy não publica portas no host. O agente exige token Bearer, escuta apenas no loopback por padrão e pode ser disponibilizado por uma VPN privada. Tokens são recebidos por variáveis de ambiente e nunca versionados.
+
+## Processamento assíncrono
+
+O Celery Beat publica periodicamente a tarefa de monitoramento no Redis. Um worker consulta somente os serviços habilitados, executa cada verificação e persiste o resultado e a eventual transição do incidente na mesma transação. Worker e Beat não publicam portas externas.
