@@ -54,9 +54,10 @@ services:
   dashboard:
     build: .
     command:
-      - python
-      - -m
-      - homelab_pulse.dashboard
+      - gunicorn
+      - homelab_pulse.dashboard:server
+      - --bind=0.0.0.0:8050
+      - --workers=2
     environment: *app-environment
     ports:
       - "8050:8050"
