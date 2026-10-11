@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     agent_token: str = "change-this-agent-token"
     docker_api_url: str = "http://docker-proxy:2375"
     redis_url: str = "redis://localhost:6379/0"
+    api_base_url: str = "http://localhost:8000"
+    dashboard_port: int = 8050
     monitor_interval_seconds: int = 60
 
     model_config = SettingsConfigDict(
