@@ -173,7 +173,19 @@ app.layout = html.Main(
         dcc.Interval(id="refresh-interval", interval=30_000),
         html.Section(
             [
-                html.Div("HP", style={"fontWeight": "800", "color": COLORS["background"]}),
+                html.Div(
+                    "HP",
+                    style={
+                        "background": COLORS["green"],
+                        "borderRadius": "50%",
+                        "color": COLORS["background"],
+                        "display": "grid",
+                        "fontWeight": "800",
+                        "height": "42px",
+                        "placeItems": "center",
+                        "width": "42px",
+                    },
+                ),
                 html.H1("HomeLab Pulse", style={"margin": 0}),
                 html.P("Entre para visualizar somente os seus serviços."),
                 dcc.Input(
