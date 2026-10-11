@@ -1,14 +1,49 @@
+x-app-environment: &app-environment
+  APP_ENVIRONMENT: development
+  APP_VERSION: 0.5.0
+  DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: development-secret-change-before-production
+  MONITOR_INTERVAL_SECONDS: ${MONITOR_INTERVAL_SECONDS:-60}
+
 services:
   api:
     build: .
-    environment:
-      APP_ENVIRONMENT: development
-      APP_VERSION: 0.4.0
-      DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
-      REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: development-secret-change-before-production
+    environment: *app-environment
     ports:
       - "8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command:
+      - celery
+      - -A
+      - homelab_pulse.celery_app:celery_app
+      - worker
+      - --loglevel=info
+      - --pool=solo
+    environment: *app-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: .
+    command:
+      - celery
+      - -A
+      - homelab_pulse.celery_app:celery_app
+      - beat
+      - --loglevel=info
+      - --schedule=/tmp/celerybeat-schedule
+    environment: *app-environment
     depends_on:
       database:
         condition: service_healthy

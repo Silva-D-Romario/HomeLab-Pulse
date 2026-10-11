@@ -1,5 +1,4 @@
 import uuid
-from dataclasses import asdict
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,7 +9,7 @@ from homelab_pulse.api.resources import get_owned_service
 from homelab_pulse.database import get_db
 from homelab_pulse.dependencies import CurrentUser
 from homelab_pulse.models.service_check import ServiceCheck
-from homelab_pulse.monitoring.http_probe import probe_http_service
+from homelab_pulse.monitoring.runner import run_service_check
 from homelab_pulse.schemas.monitoring import ServiceCheckResponse
 
 router = APIRouter(prefix="/services", tags=["monitoring"])
@@ -34,12 +33,7 @@ async def check_service(
             detail="Service monitoring is disabled",
         )
 
-    result = await probe_http_service(service.target_url)
-    check = ServiceCheck(service_id=service.id, **asdict(result))
-    db.add(check)
-    await db.commit()
-    await db.refresh(check)
-    return check
+    return await run_service_check(db, service)
 
 
 @router.get(

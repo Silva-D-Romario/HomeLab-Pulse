@@ -3,11 +3,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from homelab_pulse import agent
+from homelab_pulse.celery_app import celery_app
 from homelab_pulse.config import get_settings
 from homelab_pulse.docker_collector import fetch_containers
 from homelab_pulse.models.service_check import CheckStatus
 from homelab_pulse.monitoring.http_probe import ProbeResult, probe_http_service
 from homelab_pulse.schemas.agent import ContainerSummary
+from homelab_pulse.tasks import monitor_enabled_services_task
 
 
 async def create_monitored_service(client: AsyncClient, email: str) -> tuple[str, str]:
@@ -74,7 +76,7 @@ async def test_check_endpoint_stores_history_and_enforces_ownership(
     async def fake_probe(_target_url: str) -> ProbeResult:
         return ProbeResult(CheckStatus.UP, 18, 200)
 
-    monkeypatch.setattr("homelab_pulse.api.monitoring.probe_http_service", fake_probe)
+    monkeypatch.setattr("homelab_pulse.monitoring.runner.probe_http_service", fake_probe)
     owner_headers = {"Authorization": f"Bearer {owner_token}"}
     stranger_headers = {"Authorization": f"Bearer {stranger_token}"}
 
@@ -97,6 +99,51 @@ async def test_check_endpoint_stores_history_and_enforces_ownership(
     assert history_response.status_code == 200
     assert history_response.json()[0]["id"] == check_response.json()["id"]
     assert stranger_response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_incident_opens_once_and_resolves_when_service_recovers(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token, service_id = await create_monitored_service(client, "incidents@example.com")
+    results = iter(
+        [
+            ProbeResult(CheckStatus.DOWN, 50, 503, "HTTP 503"),
+            ProbeResult(CheckStatus.DOWN, 45, 503, "HTTP 503"),
+            ProbeResult(CheckStatus.UP, 12, 200),
+        ]
+    )
+
+    async def fake_probe(_target_url: str) -> ProbeResult:
+        return next(results)
+
+    monkeypatch.setattr("homelab_pulse.monitoring.runner.probe_http_service", fake_probe)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    await client.post(f"/api/v1/services/{service_id}/check", headers=headers)
+    first_incidents = await client.get("/api/v1/incidents?status=open", headers=headers)
+    await client.post(f"/api/v1/services/{service_id}/check", headers=headers)
+    second_incidents = await client.get("/api/v1/incidents?status=open", headers=headers)
+    await client.post(f"/api/v1/services/{service_id}/check", headers=headers)
+    resolved_incidents = await client.get(
+        f"/api/v1/services/{service_id}/incidents",
+        headers=headers,
+    )
+
+    assert first_incidents.status_code == 200
+    assert len(first_incidents.json()) == 1
+    assert len(second_incidents.json()) == 1
+    assert resolved_incidents.json()[0]["status"] == "resolved"
+    assert resolved_incidents.json()[0]["resolved_at"] is not None
+
+
+def test_celery_schedule_registers_monitoring_task() -> None:
+    schedule = celery_app.conf.beat_schedule["monitor-enabled-services"]
+
+    assert schedule["task"] == "homelab_pulse.monitor_enabled_services"
+    assert schedule["schedule"] == 60.0
+    assert monitor_enabled_services_task.name == "homelab_pulse.monitor_enabled_services"
 
 
 @pytest.mark.anyio

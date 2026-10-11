@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homelab-pulse"
-version = "0.4.0"
+version = "0.5.0"
 description = "Monitoramento de servicos e containers para homelabs"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.16,<2",
+    "celery[redis]>=5.5,<6",
     "email-validator>=2.2,<3",
     "fastapi>=0.116,<1",
     "httpx>=0.28,<1",

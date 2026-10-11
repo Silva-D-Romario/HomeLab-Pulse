@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "HomeLab Pulse"
     app_environment: str = "development"
-    app_version: str = "0.4.0"
+    app_version: str = "0.5.0"
     database_url: str = "sqlite+aiosqlite:///./homelab_pulse.db"
     jwt_secret: str = "change-this-secret-in-production"
     jwt_algorithm: str = "HS256"
@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     monitor_timeout_seconds: float = 10.0
     agent_token: str = "change-this-agent-token"
     docker_api_url: str = "http://docker-proxy:2375"
+    redis_url: str = "redis://localhost:6379/0"
+    monitor_interval_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
