@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     monitor_timeout_seconds: float = 10.0
     agent_token: str = "change-this-agent-token"
     docker_api_url: str = "http://docker-proxy:2375"
+    redis_url: str = "redis://localhost:6379/0"
+    monitor_interval_seconds: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
