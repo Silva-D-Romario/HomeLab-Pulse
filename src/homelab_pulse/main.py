@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from homelab_pulse.api.auth import router as auth_router
+from homelab_pulse.api.dashboard import router as dashboard_router
 from homelab_pulse.api.health import router as health_router
 from homelab_pulse.api.incidents import router as incidents_router
 from homelab_pulse.api.monitoring import router as monitoring_router
@@ -18,6 +19,7 @@ def create_app() -> FastAPI:
         description="API para monitoramento seguro de servicos e containers de homelab.",
     )
     application.include_router(auth_router, prefix="/api/v1")
+    application.include_router(dashboard_router, prefix="/api/v1")
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(incidents_router, prefix="/api/v1")
     application.include_router(monitoring_router, prefix="/api/v1")

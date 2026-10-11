@@ -1,8 +1,9 @@
 x-app-environment: &app-environment
   APP_ENVIRONMENT: development
-  APP_VERSION: 0.5.0
+  APP_VERSION: 0.6.0
   DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
   REDIS_URL: redis://redis:6379/0
+  API_BASE_URL: http://api:8000
   JWT_SECRET: development-secret-change-before-production
   MONITOR_INTERVAL_SECONDS: ${MONITOR_INTERVAL_SECONDS:-60}
 
@@ -49,6 +50,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  dashboard:
+    build: .
+    command:
+      - gunicorn
+      - homelab_pulse.dashboard:server
+      - --bind=0.0.0.0:8050
+      - --workers=2
+    environment: *app-environment
+    ports:
+      - "8050:8050"
+    depends_on:
+      - api
 
   database:
     image: postgres:16-alpine

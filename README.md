@@ -2,7 +2,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 5 concluída — incidentes automáticos e monitoramento agendado com Celery/Redis.
+> Status: etapa 6 concluída — dashboard autenticado com indicadores e gráficos Plotly.
 
 ## O que o projeto demonstrará
 
@@ -36,6 +36,7 @@ Acesse:
 
 - API: `http://localhost:8000/api/v1/health`
 - Swagger: `http://localhost:8000/docs`
+- Dashboard: `http://localhost:8050`
 
 Resposta esperada do health check:
 
@@ -43,7 +44,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -55,7 +56,7 @@ Resposta esperada do health check:
 docker compose up --build
 ```
 
-O Compose prepara a API, PostgreSQL, Redis, o worker Celery e o agendador Celery Beat. Os dados locais são mantidos em volumes Docker.
+O Compose prepara a API, o dashboard, PostgreSQL, Redis, o worker Celery e o agendador Celery Beat. Os dados locais são mantidos em volumes Docker.
 
 ## Autenticação
 
@@ -136,6 +137,21 @@ Principais rotas:
 
 O intervalo padrão é de 60 segundos e pode ser alterado com `MONITOR_INTERVAL_SECONDS`.
 
+## Dashboard
+
+O dashboard Plotly Dash fica disponível em `http://localhost:8050`. Use a mesma conta criada na API. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
+
+Indicadores disponíveis:
+
+- quantidade de servidores e serviços;
+- disponibilidade e latência média das últimas 24 horas;
+- serviços online, offline ou ainda sem dados;
+- incidentes atualmente abertos;
+- gráficos de estado, disponibilidade por serviço e histórico de latência;
+- tabela com o estado mais recente de cada serviço.
+
+A rota `GET /api/v1/dashboard` fornece os dados agregados usados pela interface.
+
 ## Agente Docker
 
 O agente coleta nomes, imagens e estados dos containers sem receber acesso de escrita. Defina um `AGENT_TOKEN` forte no arquivo `.env` e execute:
@@ -158,6 +174,7 @@ src/homelab_pulse/
 ├── monitoring/      # Sondagem HTTP e ciclo de incidentes
 ├── celery_app.py    # Fila e agendamento periódico
 ├── tasks.py         # Tarefas executadas pelo worker
+├── dashboard.py     # Interface autenticada com Plotly Dash
 ├── database.py      # Sessões assíncronas de banco
 ├── security.py      # Hash de senha e tokens JWT
 ├── config.py        # Configuração por variáveis de ambiente
@@ -181,7 +198,7 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 - [x] Etapa 3 — cadastro de servidores e serviços com isolamento por usuário.
 - [x] Etapa 4 — monitor HTTP e agente Docker somente leitura.
 - [x] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
-- [ ] Etapa 6 — dashboard com indicadores e gráficos Plotly.
+- [x] Etapa 6 — dashboard com indicadores e gráficos Plotly.
 - [ ] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
 - [ ] Etapa 8 — segurança, cobertura de testes, documentação e deploy.
 
