@@ -1,8 +1,10 @@
 # HomeLab Pulse
 
+[![CI](https://github.com/Silva-D-Romario/HomeLab-Pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/Silva-D-Romario/HomeLab-Pulse/actions/workflows/ci.yml)
+
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 7 concluída — integrações autenticadas com Jellyfin, Portainer e stack *arr.
+> Status: versão 0.8.0 concluída — projeto testado, documentado e preparado para deploy.
 
 ## O que o projeto demonstrará
 
@@ -44,7 +46,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -179,6 +181,20 @@ O endpoint `GET /api/v1/containers` exige o token Bearer. A API Docker fica isol
 
 Consulte [a documentação de segurança do agente](docs/docker-agent.md) antes de liberar acesso por VPN ou proxy reverso.
 
+## Segurança e qualidade
+
+- senhas armazenadas com Argon2;
+- JWT com expiração, emissor, público e identificador único;
+- isolamento de servidores, serviços, métricas e credenciais por usuário;
+- chaves externas criptografadas e nunca devolvidas pela API;
+- segredos fracos e SQLite bloqueados no ambiente de produção;
+- cabeçalhos HTTP defensivos;
+- CI com Ruff, 32 testes, cobertura mínima de 75% e auditoria de dependências.
+
+## Deploy
+
+O arquivo `render.yaml` prepara API, dashboard, Redis e worker. Leia [o guia de deploy](docs/deploy.md) antes de criar o Blueprint: o worker do Render usa um plano pago e serviços hospedados na nuvem não acessam automaticamente a rede privada do homelab.
+
 ## Estrutura inicial
 
 ```text
@@ -215,6 +231,6 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 - [x] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
 - [x] Etapa 6 — dashboard com indicadores e gráficos Plotly.
 - [x] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
-- [ ] Etapa 8 — segurança, cobertura de testes, documentação e deploy.
+- [x] Etapa 8 — segurança, cobertura de testes, documentação e preparação do deploy.
 
 Consulte [a arquitetura planejada](docs/arquitetura.md) para entender os componentes e as decisões de segurança.
