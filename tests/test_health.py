@@ -16,7 +16,7 @@ async def test_health_check_returns_application_status() -> None:
     payload = response.json()
     assert payload["application"] == "HomeLab Pulse"
     assert payload["environment"] == "development"
-    assert payload["version"] == "0.8.0"
+    assert payload["version"] == "0.8.1"
     assert payload["status"] == "UP"
     assert payload["timestamp"]
 

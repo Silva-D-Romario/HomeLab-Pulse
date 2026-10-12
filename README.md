@@ -4,7 +4,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: versão 0.8.0 concluída — projeto testado, documentado e preparado para deploy.
+> Status: versão 0.8.1 concluída — projeto testado, documentado e preparado para deploy.
 
 ## O que o projeto demonstrará
 
@@ -46,7 +46,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -94,6 +94,17 @@ docker compose exec api python -m homelab_pulse.cli create-admin \
 ```
 
 A senha é solicitada sem aparecer no terminal. Contas criadas pela rota pública sempre recebem o perfil comum.
+
+### Autorizar requisições no Swagger
+
+As rotas de servidores, serviços, métricas e incidentes exigem autenticação. No Swagger:
+
+1. execute `POST /api/v1/auth/login` com seu e-mail e senha;
+2. copie somente o valor de `access_token` retornado;
+3. clique em **Authorize**, no topo da página;
+4. cole o token no campo e confirme.
+
+O Swagger acrescenta `Bearer` automaticamente. Uma requisição protegida sem essa autorização retorna `401 Authentication required`. Uma resposta `422` indica campos ausentes ou inválidos.
 
 ## Servidores e serviços
 
@@ -157,6 +168,8 @@ O intervalo padrão é de 60 segundos e pode ser alterado com `MONITOR_INTERVAL_
 ## Dashboard
 
 O dashboard Plotly Dash fica disponível em `http://localhost:8050`. Use a mesma conta criada na API. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
+
+Depois de entrar, cadastre primeiro o servidor e depois o serviço nos formulários do próprio painel. Não é necessário usar o Swagger para esse fluxo. O host identifica a máquina, por exemplo `192.168.1.50`; a URL do serviço deve conter o protocolo e a porta, por exemplo `http://192.168.1.50:8096`.
 
 Indicadores disponíveis:
 
