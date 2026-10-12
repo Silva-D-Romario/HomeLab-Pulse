@@ -60,6 +60,15 @@ def test_production_rejects_default_secrets_and_sqlite() -> None:
             _env_file=None,
         )
 
+    settings = Settings(
+        app_environment="production",
+        jwt_secret="a" * 40,
+        credential_encryption_secret="b" * 40,
+        database_url="postgresql://user:password@database.example/app",
+        _env_file=None,
+    )
+    assert settings.database_url.startswith("postgresql+psycopg://")
+
 
 @pytest.mark.anyio
 async def test_api_responses_include_security_headers(client: AsyncClient) -> None:
