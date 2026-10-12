@@ -9,7 +9,7 @@ services:
       - --port
       - "8001"
     environment:
-      APP_VERSION: 0.4.0
+      APP_VERSION: 0.8.0
       AGENT_TOKEN: ${AGENT_TOKEN}
       DOCKER_API_URL: http://docker-proxy:2375
     ports:

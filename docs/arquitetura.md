@@ -34,7 +34,9 @@ Cada servidor possui um proprietário e cada serviço pertence a um servidor. To
 
 ## Autenticação e autorização
 
-As senhas são armazenadas somente como hashes Argon2. Após o login, a API emite um JWT com validade configurável. Rotas privadas validam o token e carregam o usuário diretamente do banco. O cadastro público sempre cria contas comuns; ações administrativas exigem o perfil `admin`, criado por um comando executado no servidor.
+As senhas são armazenadas somente como hashes Argon2. Após o login, a API emite um JWT com validade configurável, emissor, público e identificador único. Rotas privadas validam o token e carregam o usuário diretamente do banco. O cadastro público sempre cria contas comuns; ações administrativas exigem o perfil `admin`, criado por um comando executado no servidor.
+
+Em produção, a inicialização falha quando os segredos JWT ou de criptografia são fracos, ou quando o banco configurado é SQLite. As respostas da API incluem cabeçalhos contra interpretação incorreta de conteúdo, incorporação em frames e acesso desnecessário a recursos do navegador.
 
 ## Segurança do Docker
 
@@ -53,3 +55,7 @@ O Celery Beat publica periodicamente a tarefa de monitoramento no Redis. Um work
 ## Dashboard e privacidade
 
 O dashboard não acessa o banco diretamente. Ele autentica na API, mantém o JWT na sessão do navegador e envia esse token ao consultar os indicadores. A API aplica o proprietário aos servidores, serviços, verificações e incidentes antes de calcular totais e séries. Assim, nenhum gráfico combina dados de contas diferentes.
+
+## Deploy
+
+O Blueprint do Render separa API, dashboard e processamento periódico. PostgreSQL e Redis permanecem fora do processo web, e os segredos são gerados ou solicitados pela plataforma. Em uma implantação local, o Docker Compose reproduz a mesma separação. Endereços privados do homelab não são expostos automaticamente à implantação em nuvem.

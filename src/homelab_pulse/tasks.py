@@ -36,4 +36,3 @@ async def monitor_enabled_services() -> dict[str, int]:
 @celery_app.task(name="homelab_pulse.monitor_enabled_services")
 def monitor_enabled_services_task() -> dict[str, Any]:
     return asyncio.run(monitor_enabled_services())
-

@@ -15,4 +15,3 @@ class IncidentResponse(BaseModel):
     detail: str | None
     opened_at: datetime
     resolved_at: datetime | None
-

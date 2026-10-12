@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "homelab-pulse"
-version = "0.7.0"
+version = "0.8.0"
 description = "Monitoramento de servicos e containers para homelabs"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.16,<2",
     "celery[redis]>=5.5,<6",
-    "cryptography>=45,<47",
+    "cryptography>=50,<51",
     "dash>=3.2,<5",
     "email-validator>=2.2,<3",
     "fastapi>=0.116,<1",
@@ -28,7 +28,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "aiosqlite>=0.21,<1",
-    "pytest>=8.4,<9",
+    "pip-audit>=2.9,<3",
+    "pytest>=9.0.3,<10",
     "pytest-cov>=6.2,<7",
     "ruff>=0.12,<1",
 ]
@@ -37,7 +38,7 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --cov=homelab_pulse --cov-report=term-missing"
+addopts = "--strict-markers --cov=homelab_pulse --cov-report=term-missing --cov-fail-under=75"
 testpaths = ["tests"]
 
 [tool.ruff]

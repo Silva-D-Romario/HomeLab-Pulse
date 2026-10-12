@@ -1,2 +1,1 @@
 """HomeLab Pulse application package."""
-

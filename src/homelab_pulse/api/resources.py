@@ -30,4 +30,3 @@ async def get_owned_service(
     if service is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
     return service
-

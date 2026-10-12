@@ -12,4 +12,3 @@ class ContainerSummary(BaseModel):
 class AgentHealth(BaseModel):
     component: str = "docker-agent"
     status: str = "UP"
-

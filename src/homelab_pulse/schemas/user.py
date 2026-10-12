@@ -20,4 +20,3 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: UserRole
     created_at: datetime
-

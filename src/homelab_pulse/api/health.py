@@ -26,4 +26,3 @@ async def health_check() -> HealthResponse:
         status="UP",
         timestamp=datetime.now(UTC),
     )
-

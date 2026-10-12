@@ -84,9 +84,7 @@ async def get_dashboard(
             services_down += 1
 
         response_times = [
-            check.response_time_ms
-            for check in service_checks
-            if check.response_time_ms is not None
+            check.response_time_ms for check in service_checks if check.response_time_ms is not None
         ]
         successful_checks = sum(check.status == CheckStatus.UP for check in service_checks)
         service_metrics.append(
@@ -122,9 +120,7 @@ async def get_dashboard(
         services_down=services_down,
         services_unknown=len(services) - services_up - services_down,
         open_incidents=open_incidents,
-        availability_percent=(
-            round(successful_checks / len(checks) * 100, 1) if checks else None
-        ),
+        availability_percent=(round(successful_checks / len(checks) * 100, 1) if checks else None),
         average_response_time_ms=(
             round(sum(response_times) / len(response_times)) if response_times else None
         ),
