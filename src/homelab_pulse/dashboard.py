@@ -143,15 +143,29 @@ def kpi_card(label: str, element_id: str) -> html.Div:
 
 
 def build_services_table(services: list[dict[str, Any]]) -> html.Table:
-    headings = ["Serviço", "Estado", "Disponibilidade", "Latência média", "Última verificação"]
+    headings = [
+        "Serviço",
+        "Integração",
+        "Estado",
+        "Disponibilidade",
+        "Latência média",
+        "Última verificação",
+    ]
     rows = []
     for service in services:
         availability = service["availability_percent"]
         latency = service["average_response_time_ms"]
+        integration = service.get("integration_data") or {}
+        integration_label = " ".join(
+            str(value)
+            for value in [integration.get("product"), integration.get("version")]
+            if value
+        )
         rows.append(
             html.Tr(
                 [
                     html.Td(service["name"]),
+                    html.Td(integration_label or "—"),
                     html.Td(service["status"] or "sem dados"),
                     html.Td(f"{availability:.1f}%" if availability is not None else "—"),
                     html.Td(f"{latency} ms" if latency is not None else "—"),

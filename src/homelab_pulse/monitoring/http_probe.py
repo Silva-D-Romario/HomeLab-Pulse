@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from time import perf_counter
+from typing import Any
 
 import httpx
 
@@ -13,6 +14,7 @@ class ProbeResult:
     response_time_ms: int | None
     http_status: int | None
     detail: str | None = None
+    integration_data: dict[str, Any] | None = None
 
 
 async def probe_http_service(
@@ -43,4 +45,3 @@ async def probe_http_service(
     finally:
         if owns_client:
             await client.aclose()
-

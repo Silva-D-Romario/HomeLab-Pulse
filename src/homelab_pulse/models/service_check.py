@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Uuid
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from homelab_pulse.models.base import Base
@@ -28,9 +28,9 @@ class ServiceCheck(Base):
     response_time_ms: Mapped[int | None] = mapped_column(Integer, default=None)
     http_status: Mapped[int | None] = mapped_column(Integer, default=None)
     detail: Mapped[str | None] = mapped_column(String(500), default=None)
+    integration_data: Mapped[dict[str, object] | None] = mapped_column(JSON, default=None)
     checked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         index=True,
     )
-

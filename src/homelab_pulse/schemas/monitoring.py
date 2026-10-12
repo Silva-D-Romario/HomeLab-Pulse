@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,5 +16,5 @@ class ServiceCheckResponse(BaseModel):
     response_time_ms: int | None
     http_status: int | None
     detail: str | None
+    integration_data: dict[str, Any] | None
     checked_at: datetime
-

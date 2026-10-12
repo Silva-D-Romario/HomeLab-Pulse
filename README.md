@@ -2,7 +2,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: etapa 6 concluída — dashboard autenticado com indicadores e gráficos Plotly.
+> Status: etapa 7 concluída — integrações autenticadas com Jellyfin, Portainer e stack *arr.
 
 ## O que o projeto demonstrará
 
@@ -44,7 +44,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -122,6 +122,21 @@ Exemplo de serviço:
 
 Cada verificação registra disponibilidade, código HTTP, latência e erro. O histórico também respeita o proprietário do serviço.
 
+## Integrações com o homelab
+
+Cadastre o serviço usando a URL base e um dos tipos `jellyfin`, `portainer` ou `arr`. Para salvar a chave da API, use o identificador retornado no cadastro:
+
+```bash
+curl -X PUT "http://localhost:8000/api/v1/services/$SERVICE_ID/credential" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"api_key":"substitua-pela-chave-do-servico"}'
+```
+
+A chave é criptografada antes de ser armazenada e nunca aparece nas respostas. O endpoint `GET /api/v1/services/{id}/credential` informa apenas se ela está configurada; `DELETE` remove a credencial. O Jellyfin permite consultar as informações públicas sem chave, recomenda-se usar uma chave de acesso no Portainer e a stack *arr exige uma chave.
+
+Defina `CREDENTIAL_ENCRYPTION_SECRET` com um segredo longo, exclusivo e estável. Alterar esse valor torna as credenciais já gravadas ilegíveis. As verificações registram somente metadados seguros, como produto, versão, nome da instância, sistema operacional e runtime.
+
 ## Incidentes e execução agendada
 
 O Celery Beat agenda a verificação de todos os serviços habilitados. O worker executa as sondagens usando o Redis como fila:
@@ -148,7 +163,7 @@ Indicadores disponíveis:
 - serviços online, offline ou ainda sem dados;
 - incidentes atualmente abertos;
 - gráficos de estado, disponibilidade por serviço e histórico de latência;
-- tabela com o estado mais recente de cada serviço.
+- tabela com o estado mais recente e a versão detectada de cada integração.
 
 A rota `GET /api/v1/dashboard` fornece os dados agregados usados pela interface.
 
@@ -199,7 +214,7 @@ Cada mudança é registrada em um commit específico na `develop`. As entregas c
 - [x] Etapa 4 — monitor HTTP e agente Docker somente leitura.
 - [x] Etapa 5 — métricas, incidentes e tarefas com Celery/Redis.
 - [x] Etapa 6 — dashboard com indicadores e gráficos Plotly.
-- [ ] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
+- [x] Etapa 7 — integrações com Jellyfin, Portainer e stack *arr.
 - [ ] Etapa 8 — segurança, cobertura de testes, documentação e deploy.
 
 Consulte [a arquitetura planejada](docs/arquitetura.md) para entender os componentes e as decisões de segurança.

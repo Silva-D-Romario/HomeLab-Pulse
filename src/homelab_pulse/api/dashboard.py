@@ -103,6 +103,7 @@ async def get_dashboard(
                     round(sum(response_times) / len(response_times)) if response_times else None
                 ),
                 last_checked_at=latest_check.checked_at if latest_check else None,
+                integration_data=latest_check.integration_data if latest_check else None,
             )
         )
 
