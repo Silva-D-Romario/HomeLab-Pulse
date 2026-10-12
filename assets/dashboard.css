@@ -1,0 +1,276 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #071713;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.hp-app {
+  margin: 0 auto;
+  max-width: 1500px;
+  padding: 28px clamp(18px, 4vw, 64px) 56px;
+}
+
+.hp-login-title,
+.hp-dashboard-title,
+.hp-section-title {
+  color: #f7fbf9;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.hp-login-description,
+.hp-help,
+.hp-updated-at {
+  color: #abc0b9;
+  line-height: 1.55;
+}
+
+.hp-label {
+  color: #dce9e4;
+  font-size: 0.86rem;
+  font-weight: 700;
+  margin-bottom: -7px;
+}
+
+.hp-input {
+  background: #f7faf8 !important;
+  border: 2px solid #c9d8d2 !important;
+  border-radius: 10px;
+  color: #0a211b !important;
+  min-height: 46px;
+  outline: none;
+  padding: 11px 13px;
+  width: 100%;
+}
+
+.hp-input::placeholder {
+  color: #657b73 !important;
+  opacity: 1;
+}
+
+.hp-input:focus {
+  border-color: #b7f34a !important;
+  box-shadow: 0 0 0 3px rgb(183 243 74 / 18%);
+}
+
+.hp-button {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 10px 17px;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.hp-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.hp-button-primary {
+  background: #b7f34a;
+  color: #102119;
+}
+
+.hp-button-secondary {
+  background: #e9f5f0;
+  color: #102722;
+}
+
+.hp-button-ghost {
+  background: transparent;
+  border-color: #45675d;
+  color: #eef8f4;
+}
+
+.hp-header {
+  align-items: center;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.hp-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.hp-dashboard-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+
+.hp-eyebrow {
+  color: #b7f34a;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  margin: 0 0 7px;
+}
+
+.hp-updated-at {
+  margin: 6px 0 0;
+}
+
+.hp-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 20px 0;
+}
+
+.hp-form-card {
+  background: #102722;
+  border: 1px solid #24483e;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+}
+
+.hp-form-card .hp-button {
+  margin-top: 4px;
+}
+
+.hp-section-title {
+  font-size: 1.3rem;
+}
+
+.hp-help {
+  margin: -5px 0 2px;
+}
+
+.hp-message {
+  font-size: 0.9rem;
+  min-height: 1.3em;
+  margin: 0;
+}
+
+.hp-message-error {
+  color: #ff9292;
+}
+
+.hp-message-success {
+  color: #b7f34a;
+}
+
+.hp-kpi-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.hp-chart-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  margin-top: 14px;
+}
+
+.hp-dropdown .Select-control,
+.hp-dropdown .Select-menu-outer {
+  background: #f7faf8;
+  border: 2px solid #c9d8d2;
+  color: #0a211b;
+}
+
+.hp-dropdown .Select-control {
+  border-radius: 10px;
+  min-height: 46px;
+}
+
+.hp-dropdown .Select-placeholder,
+.hp-dropdown .Select-value-label,
+.hp-dropdown .Select-input > input {
+  color: #0a211b !important;
+}
+
+.hp-dropdown .VirtualizedSelectOption {
+  background: #f7faf8;
+  color: #0a211b;
+}
+
+.hp-dropdown .VirtualizedSelectFocusedOption {
+  background: #dff6b8;
+}
+
+.hp-table-title {
+  margin-top: 28px;
+}
+
+.hp-table-wrap {
+  overflow-x: auto;
+}
+
+.hp-table {
+  background: #102722;
+  border-collapse: collapse;
+  border-radius: 14px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.hp-table th,
+.hp-table td {
+  border-bottom: 1px solid #24483e;
+  padding: 14px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hp-table th {
+  color: #b7f34a;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hp-empty-state {
+  background: #102722;
+  border: 1px dashed #3d6257;
+  border-radius: 14px;
+  color: #abc0b9;
+  padding: 24px;
+}
+
+.hp-empty-state strong {
+  color: #f7fbf9;
+}
+
+@media (max-width: 780px) {
+  .hp-app {
+    padding: 18px 14px 40px;
+  }
+
+  .hp-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hp-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hp-header-actions,
+  .hp-header-actions .hp-button {
+    width: 100%;
+  }
+
+  .hp-chart-grid {
+    grid-template-columns: 1fr;
+  }
+}

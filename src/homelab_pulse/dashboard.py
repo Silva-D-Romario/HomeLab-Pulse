@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -69,6 +70,75 @@ def fetch_dashboard(token: str) -> dict[str, Any]:
     return dict(response.json())
 
 
+def fetch_servers(token: str) -> list[dict[str, Any]]:
+    try:
+        response = httpx.get(
+            f"{settings.api_base_url}/api/v1/servers",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 401:
+            raise DashboardApiError("Sua sessão expirou. Entre novamente.") from error
+        raise DashboardApiError("Não foi possível carregar os servidores.") from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+    return list(response.json())
+
+
+def create_server(token: str, name: str, host: str, description: str | None) -> None:
+    try:
+        response = httpx.post(
+            f"{settings.api_base_url}/api/v1/servers",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": name, "host": host, "description": description or None},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 401:
+            message = "Sua sessão expirou. Entre novamente."
+        elif error.response.status_code == 409:
+            message = "Já existe um servidor com esse nome."
+        elif error.response.status_code == 422:
+            message = "Revise os dados informados para o servidor."
+        else:
+            message = "Não foi possível cadastrar o servidor."
+        raise DashboardApiError(message) from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+
+
+def create_service(
+    token: str,
+    server_id: str,
+    name: str,
+    kind: str,
+    target_url: str,
+) -> None:
+    try:
+        response = httpx.post(
+            f"{settings.api_base_url}/api/v1/servers/{server_id}/services",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": name, "kind": kind, "target_url": target_url, "enabled": True},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 401:
+            message = "Sua sessão expirou. Entre novamente."
+        elif error.response.status_code == 409:
+            message = "Já existe um serviço com esse nome neste servidor."
+        elif error.response.status_code == 422:
+            message = "Informe uma URL completa, incluindo http:// ou https://."
+        else:
+            message = "Não foi possível cadastrar o serviço."
+        raise DashboardApiError(message) from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+
+
 def chart_layout(title: str) -> dict[str, Any]:
     return {
         "title": {"text": title, "font": {"size": 17}},
@@ -80,7 +150,33 @@ def chart_layout(title: str) -> dict[str, Any]:
     }
 
 
+def empty_figure(title: str, message: str) -> go.Figure:
+    figure = go.Figure()
+    figure.update_layout(**chart_layout(title))
+    figure.update_xaxes(visible=False)
+    figure.update_yaxes(visible=False)
+    figure.add_annotation(
+        text=message,
+        x=0.5,
+        y=0.5,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font={"color": COLORS["muted"], "size": 15},
+    )
+    return figure
+
+
 def build_figures(payload: dict[str, Any]) -> tuple[go.Figure, go.Figure, go.Figure]:
+    services = payload["services"]
+    if not services:
+        message = "Cadastre um servidor e o primeiro serviço para começar."
+        return (
+            empty_figure("Estado atual dos serviços", message),
+            empty_figure("Disponibilidade por serviço — 24h", message),
+            empty_figure("Latência recente", message),
+        )
+
     status_figure = go.Figure(
         go.Pie(
             labels=["Online", "Offline", "Sem dados"],
@@ -95,7 +191,6 @@ def build_figures(payload: dict[str, Any]) -> tuple[go.Figure, go.Figure, go.Fig
     )
     status_figure.update_layout(**chart_layout("Estado atual dos serviços"))
 
-    services = payload["services"]
     availability_figure = go.Figure(
         go.Bar(
             x=[service["name"] for service in services],
@@ -121,8 +216,14 @@ def build_figures(payload: dict[str, Any]) -> tuple[go.Figure, go.Figure, go.Fig
                 mode="lines+markers",
             )
         )
-    latency_figure.update_layout(**chart_layout("Latência recente"))
-    latency_figure.update_yaxes(title="ms")
+    if checks_by_service:
+        latency_figure.update_layout(**chart_layout("Latência recente"))
+        latency_figure.update_yaxes(title="ms")
+    else:
+        latency_figure = empty_figure(
+            "Latência recente",
+            "A latência aparecerá após a primeira verificação.",
+        )
     return status_figure, availability_figure, latency_figure
 
 
@@ -142,7 +243,15 @@ def kpi_card(label: str, element_id: str) -> html.Div:
     )
 
 
-def build_services_table(services: list[dict[str, Any]]) -> html.Table:
+def build_services_table(services: list[dict[str, Any]]) -> html.Table | html.Div:
+    if not services:
+        return html.Div(
+            [
+                html.Strong("Nenhum serviço cadastrado."),
+                html.Span(" Use o formulário acima para começar o monitoramento."),
+            ],
+            className="hp-empty-state",
+        )
     headings = [
         "Serviço",
         "Integração",
@@ -175,15 +284,22 @@ def build_services_table(services: list[dict[str, Any]]) -> html.Table:
         )
     return html.Table(
         [html.Thead(html.Tr([html.Th(heading) for heading in headings])), html.Tbody(rows)],
-        style={"background": COLORS["surface"], "width": "100%", "padding": "12px"},
+        className="hp-table",
     )
 
 
-app = Dash(__name__, title="HomeLab Pulse", update_title="Atualizando...")
+app = Dash(
+    __name__,
+    title="HomeLab Pulse",
+    update_title="Atualizando...",
+    assets_folder=str(Path.cwd() / "assets"),
+)
 server = app.server
 app.layout = html.Main(
     [
         dcc.Store(id="auth-token", storage_type="session"),
+        dcc.Store(id="server-revision", data=0),
+        dcc.Store(id="service-revision", data=0),
         dcc.Interval(id="refresh-interval", interval=30_000),
         html.Section(
             [
@@ -200,22 +316,27 @@ app.layout = html.Main(
                         "width": "42px",
                     },
                 ),
-                html.H1("HomeLab Pulse", style={"margin": 0}),
-                html.P("Entre para visualizar somente os seus serviços."),
+                html.H1("HomeLab Pulse", className="hp-login-title"),
+                html.P(
+                    "Monitore seus serviços e containers em um só lugar.",
+                    className="hp-login-description",
+                ),
+                html.Label("E-mail", htmlFor="email", className="hp-label"),
                 dcc.Input(
                     id="email",
                     type="email",
-                    placeholder="E-mail",
-                    style={"padding": "12px"},
+                    placeholder="voce@exemplo.com",
+                    className="hp-input",
                 ),
+                html.Label("Senha", htmlFor="password", className="hp-label"),
                 dcc.Input(
                     id="password",
                     type="password",
-                    placeholder="Senha",
-                    style={"padding": "12px"},
+                    placeholder="Digite sua senha",
+                    className="hp-input",
                 ),
-                html.Button("Entrar", id="login-button", style={"padding": "12px"}),
-                html.P(id="login-message", style={"color": COLORS["red"]}),
+                html.Button("Entrar", id="login-button", className="hp-button hp-button-primary"),
+                html.P(id="login-message", className="hp-message hp-message-error"),
             ],
             id="login-panel",
             style=LOGIN_PANEL_STYLE,
@@ -224,22 +345,131 @@ app.layout = html.Main(
             [
                 html.Header(
                     [
-                        html.Div([html.H1("HomeLab Pulse"), html.P(id="updated-at")]),
                         html.Div(
                             [
-                                html.Button("Atualizar", id="refresh-button"),
-                                html.Button("Sair", id="logout-button"),
+                                html.P("PAINEL DE MONITORAMENTO", className="hp-eyebrow"),
+                                html.H1("HomeLab Pulse", className="hp-dashboard-title"),
+                                html.P(id="updated-at", className="hp-updated-at"),
+                            ]
+                        ),
+                        html.Div(
+                            [
+                                html.Button(
+                                    "Atualizar",
+                                    id="refresh-button",
+                                    className="hp-button hp-button-secondary",
+                                ),
+                                html.Button(
+                                    "Sair",
+                                    id="logout-button",
+                                    className="hp-button hp-button-ghost",
+                                ),
                             ],
-                            style={"display": "flex", "gap": "10px"},
+                            className="hp-header-actions",
                         ),
                     ],
-                    style={
-                        "display": "flex",
-                        "justifyContent": "space-between",
-                        "alignItems": "center",
-                    },
+                    className="hp-header",
                 ),
-                html.P(id="dashboard-message", style={"color": COLORS["red"]}),
+                html.P(id="dashboard-message", className="hp-message hp-message-error"),
+                html.Section(
+                    [
+                        html.Div(
+                            [
+                                html.P("CONFIGURAÇÃO", className="hp-eyebrow"),
+                                html.H2("Cadastrar servidor", className="hp-section-title"),
+                                html.P(
+                                    "Use um nome e o endereço do equipamento na sua rede.",
+                                    className="hp-help",
+                                ),
+                                html.Label("Nome", htmlFor="server-name", className="hp-label"),
+                                dcc.Input(
+                                    id="server-name",
+                                    placeholder="Servidor de mídia",
+                                    className="hp-input",
+                                ),
+                                html.Label(
+                                    "Host ou IP", htmlFor="server-host", className="hp-label"
+                                ),
+                                dcc.Input(
+                                    id="server-host",
+                                    placeholder="192.168.1.50",
+                                    className="hp-input",
+                                ),
+                                html.Label(
+                                    "Descrição", htmlFor="server-description", className="hp-label"
+                                ),
+                                dcc.Input(
+                                    id="server-description",
+                                    placeholder="Opcional",
+                                    className="hp-input",
+                                ),
+                                html.Button(
+                                    "Cadastrar servidor",
+                                    id="create-server-button",
+                                    className="hp-button hp-button-primary",
+                                ),
+                                html.P(id="server-message", className="hp-message"),
+                            ],
+                            className="hp-form-card",
+                        ),
+                        html.Div(
+                            [
+                                html.P("MONITORAMENTO", className="hp-eyebrow"),
+                                html.H2("Cadastrar serviço", className="hp-section-title"),
+                                html.P(
+                                    "Depois do servidor, informe o endereço do serviço.",
+                                    className="hp-help",
+                                ),
+                                html.Label(
+                                    "Servidor", htmlFor="service-server", className="hp-label"
+                                ),
+                                dcc.Dropdown(
+                                    id="service-server",
+                                    placeholder="Selecione um servidor",
+                                    className="hp-dropdown",
+                                    clearable=False,
+                                ),
+                                html.Label("Nome", htmlFor="service-name", className="hp-label"),
+                                dcc.Input(
+                                    id="service-name",
+                                    placeholder="Jellyfin",
+                                    className="hp-input",
+                                ),
+                                html.Label("Tipo", htmlFor="service-kind", className="hp-label"),
+                                dcc.Dropdown(
+                                    id="service-kind",
+                                    options=[
+                                        {"label": "HTTP genérico", "value": "http"},
+                                        {"label": "Jellyfin", "value": "jellyfin"},
+                                        {"label": "Portainer", "value": "portainer"},
+                                        {"label": "Stack arr", "value": "arr"},
+                                    ],
+                                    value="http",
+                                    clearable=False,
+                                    className="hp-dropdown",
+                                ),
+                                html.Label(
+                                    "URL do serviço",
+                                    htmlFor="service-target-url",
+                                    className="hp-label",
+                                ),
+                                dcc.Input(
+                                    id="service-target-url",
+                                    placeholder="http://192.168.1.50:8096",
+                                    className="hp-input",
+                                ),
+                                html.Button(
+                                    "Cadastrar serviço",
+                                    id="create-service-button",
+                                    className="hp-button hp-button-primary",
+                                ),
+                                html.P(id="service-message", className="hp-message"),
+                            ],
+                            className="hp-form-card",
+                        ),
+                    ],
+                    className="hp-form-grid",
+                ),
                 html.Div(
                     [
                         kpi_card("Servidores", "servers-total"),
@@ -248,35 +478,27 @@ app.layout = html.Main(
                         kpi_card("Latência média", "latency-average"),
                         kpi_card("Incidentes abertos", "incidents-open"),
                     ],
-                    style={
-                        "display": "grid",
-                        "gridTemplateColumns": "repeat(auto-fit, minmax(170px, 1fr))",
-                        "gap": "14px",
-                    },
+                    className="hp-kpi-grid",
                 ),
                 html.Div(
                     [dcc.Graph(id="status-chart"), dcc.Graph(id="availability-chart")],
-                    style={
-                        "display": "grid",
-                        "gridTemplateColumns": "repeat(auto-fit, minmax(320px, 1fr))",
-                        "gap": "14px",
-                        "marginTop": "14px",
-                    },
+                    className="hp-chart-grid",
                 ),
                 dcc.Graph(id="latency-chart", style={"marginTop": "14px"}),
-                html.H2("Serviços monitorados"),
-                html.Div(id="services-table", style={"overflowX": "auto"}),
+                html.H2("Serviços monitorados", className="hp-section-title hp-table-title"),
+                html.Div(id="services-table", className="hp-table-wrap"),
             ],
             id="dashboard-panel",
+            className="hp-dashboard-panel",
             style={"display": "none"},
         ),
     ],
+    className="hp-app",
     style={
         "background": COLORS["background"],
         "color": COLORS["text"],
         "fontFamily": "Inter, system-ui, sans-serif",
         "minHeight": "100vh",
-        "padding": "24px clamp(16px, 4vw, 64px)",
     },
 )
 
@@ -319,6 +541,149 @@ def update_visibility(token: str | None) -> tuple[dict[str, str], dict[str, str]
 
 
 @app.callback(
+    Output("service-server", "options"),
+    Output("service-server", "value"),
+    Input("auth-token", "data"),
+    Input("server-revision", "data"),
+    State("service-server", "value"),
+)
+def update_server_options(
+    token: str | None,
+    _revision: int,
+    selected_server: str | None,
+) -> tuple[list[dict[str, str]], str | None]:
+    if not token:
+        return [], None
+    try:
+        servers = fetch_servers(token)
+    except DashboardApiError:
+        return [], None
+    options = [{"label": server["name"], "value": server["id"]} for server in servers]
+    available_ids = {option["value"] for option in options}
+    value = selected_server if selected_server in available_ids else None
+    if value is None and options:
+        value = options[0]["value"]
+    return options, value
+
+
+@app.callback(
+    Output("server-revision", "data"),
+    Output("server-message", "children"),
+    Output("server-message", "className"),
+    Output("server-name", "value"),
+    Output("server-host", "value"),
+    Output("server-description", "value"),
+    Input("create-server-button", "n_clicks"),
+    State("auth-token", "data"),
+    State("server-revision", "data"),
+    State("server-name", "value"),
+    State("server-host", "value"),
+    State("server-description", "value"),
+    prevent_initial_call=True,
+)
+def submit_server(
+    _clicks: int | None,
+    token: str | None,
+    revision: int,
+    name: str | None,
+    host: str | None,
+    description: str | None,
+) -> tuple[int, str, str, str, str, str]:
+    if not token:
+        return (
+            revision,
+            "Entre novamente para cadastrar.",
+            "hp-message hp-message-error",
+            "",
+            "",
+            "",
+        )
+    if not name or not host:
+        return (
+            revision,
+            "Informe o nome e o host do servidor.",
+            "hp-message hp-message-error",
+            name or "",
+            host or "",
+            description or "",
+        )
+    try:
+        create_server(
+            token, name.strip(), host.strip(), description.strip() if description else None
+        )
+    except DashboardApiError as error:
+        return (
+            revision,
+            str(error),
+            "hp-message hp-message-error",
+            name,
+            host,
+            description or "",
+        )
+    return (
+        revision + 1,
+        "Servidor cadastrado com sucesso.",
+        "hp-message hp-message-success",
+        "",
+        "",
+        "",
+    )
+
+
+@app.callback(
+    Output("service-revision", "data"),
+    Output("service-message", "children"),
+    Output("service-message", "className"),
+    Output("service-name", "value"),
+    Output("service-target-url", "value"),
+    Input("create-service-button", "n_clicks"),
+    State("auth-token", "data"),
+    State("service-revision", "data"),
+    State("service-server", "value"),
+    State("service-name", "value"),
+    State("service-kind", "value"),
+    State("service-target-url", "value"),
+    prevent_initial_call=True,
+)
+def submit_service(
+    _clicks: int | None,
+    token: str | None,
+    revision: int,
+    server_id: str | None,
+    name: str | None,
+    kind: str,
+    target_url: str | None,
+) -> tuple[int, str, str, str, str]:
+    if not token:
+        return revision, "Entre novamente para cadastrar.", "hp-message hp-message-error", "", ""
+    if not server_id or not name or not target_url:
+        return (
+            revision,
+            "Selecione o servidor e informe nome e URL do serviço.",
+            "hp-message hp-message-error",
+            name or "",
+            target_url or "",
+        )
+    try:
+        create_service(token, server_id, name.strip(), kind, target_url.strip())
+    except DashboardApiError as error:
+        return (
+            revision,
+            str(error),
+            "hp-message hp-message-error",
+            name,
+            target_url,
+        )
+    return (
+        revision + 1,
+        "Serviço cadastrado com sucesso.",
+        "hp-message hp-message-success",
+        "",
+        "",
+    )
+
+
+@app.callback(
     Output("servers-total", "children"),
     Output("services-total", "children"),
     Output("availability-total", "children"),
@@ -333,11 +698,15 @@ def update_visibility(token: str | None) -> tuple[dict[str, str], dict[str, str]
     Input("auth-token", "data"),
     Input("refresh-button", "n_clicks"),
     Input("refresh-interval", "n_intervals"),
+    Input("server-revision", "data"),
+    Input("service-revision", "data"),
 )
 def refresh_dashboard(
     token: str | None,
     _refresh_clicks: int | None,
     _intervals: int,
+    _server_revision: int,
+    _service_revision: int,
 ) -> tuple[Any, ...]:
     if not token:
         raise PreventUpdate

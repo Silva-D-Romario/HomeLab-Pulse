@@ -9,6 +9,7 @@ RUN addgroup --system app && adduser --system --ingroup app app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY assets ./assets
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
