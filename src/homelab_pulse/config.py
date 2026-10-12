@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     api_base_url: str = "http://localhost:8000"
     dashboard_port: int = 8050
+    credential_encryption_secret: str = "change-this-credential-secret"
     monitor_interval_seconds: int = 60
 
     model_config = SettingsConfigDict(
