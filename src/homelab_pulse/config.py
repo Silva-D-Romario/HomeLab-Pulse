@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./homelab_pulse.db"
     jwt_secret: str = "change-this-secret-in-production"
     jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "homelab-pulse"
+    jwt_audience: str = "homelab-pulse-api"
     jwt_access_token_minutes: int = 30
     monitor_timeout_seconds: float = 10.0
     agent_token: str = "change-this-agent-token"
@@ -19,6 +22,27 @@ class Settings(BaseSettings):
     dashboard_port: int = 8050
     credential_encryption_secret: str = "change-this-credential-secret"
     monitor_interval_seconds: int = 60
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.app_environment.lower() not in {"production", "prod"}:
+            return self
+
+        secrets = {
+            "JWT_SECRET": self.jwt_secret,
+            "CREDENTIAL_ENCRYPTION_SECRET": self.credential_encryption_secret,
+        }
+        invalid = [
+            name
+            for name, value in secrets.items()
+            if len(value) < 32 or "change" in value.lower() or "development" in value.lower()
+        ]
+        if invalid:
+            names = ", ".join(invalid)
+            raise ValueError(f"Production requires strong secrets: {names}")
+        if self.database_url.startswith("sqlite"):
+            raise ValueError("Production requires a persistent database")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",
