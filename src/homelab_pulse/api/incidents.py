@@ -47,4 +47,3 @@ async def list_service_incidents(
         .order_by(Incident.opened_at.desc())
     )
     return list(result)
-

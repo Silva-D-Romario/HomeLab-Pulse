@@ -54,6 +54,7 @@ async def test_server_crud_is_scoped_to_authenticated_user(client: AsyncClient) 
     assert update_response.status_code == 200
     assert update_response.json()["host"] == "homelab.local"
 
+
 @pytest.mark.anyio
 async def test_rejects_duplicate_server_name(client: AsyncClient) -> None:
     token = await create_user_and_token(client, "duplicates@example.com")

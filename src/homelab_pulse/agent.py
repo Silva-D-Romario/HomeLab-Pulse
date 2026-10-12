@@ -51,4 +51,3 @@ async def list_containers() -> list[ContainerSummary]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Docker API unavailable",
         ) from error
-

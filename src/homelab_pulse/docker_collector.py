@@ -32,4 +32,3 @@ async def fetch_containers(client: httpx.AsyncClient | None = None) -> list[Cont
     finally:
         if owns_client:
             await client.aclose()
-

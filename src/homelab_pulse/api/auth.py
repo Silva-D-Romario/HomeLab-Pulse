@@ -65,4 +65,3 @@ async def login(
         )
 
     return TokenResponse(access_token=create_access_token(user.id))
-

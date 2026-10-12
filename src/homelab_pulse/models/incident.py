@@ -33,4 +33,3 @@ class Incident(Base):
         default=lambda: datetime.now(UTC),
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
-

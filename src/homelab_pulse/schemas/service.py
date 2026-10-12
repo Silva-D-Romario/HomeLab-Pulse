@@ -31,4 +31,3 @@ class ServiceResponse(BaseModel):
     enabled: bool
     created_at: datetime
     updated_at: datetime
-

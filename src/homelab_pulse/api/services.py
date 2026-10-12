@@ -102,4 +102,3 @@ async def delete_service(
     await db.delete(service)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
