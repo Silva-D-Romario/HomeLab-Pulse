@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -13,6 +14,7 @@ class DashboardServiceMetric(BaseModel):
     availability_percent: float | None
     average_response_time_ms: int | None
     last_checked_at: datetime | None
+    integration_data: dict[str, Any] | None
 
 
 class DashboardCheckPoint(BaseModel):
