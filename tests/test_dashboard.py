@@ -1,8 +1,20 @@
+import httpx
 import pytest
 from httpx import AsyncClient
 
+from homelab_pulse.dashboard import (
+    DashboardApiError,
+    build_figures,
+    build_services_table,
+    create_server,
+    create_service,
+    fetch_servers,
+    submit_server,
+    submit_service,
+    update_server_options,
+    update_visibility,
+)
 from homelab_pulse.dashboard import app as dashboard_app
-from homelab_pulse.dashboard import build_figures, update_visibility
 from homelab_pulse.models.service_check import CheckStatus
 from homelab_pulse.monitoring.http_probe import ProbeResult
 
@@ -111,10 +123,185 @@ def test_dashboard_builds_three_plotly_figures() -> None:
     assert latency.data[0].type == "scatter"
 
 
+def test_empty_dashboard_explains_how_to_start() -> None:
+    payload = {
+        "services_up": 0,
+        "services_down": 0,
+        "services_unknown": 0,
+        "services": [],
+        "recent_checks": [],
+    }
+
+    figures = build_figures(payload)
+    table = build_services_table([])
+
+    assert all("Cadastre um servidor" in figure.layout.annotations[0].text for figure in figures)
+    assert "Nenhum serviço cadastrado" in str(table)
+
+
+def test_server_form_creates_resource_and_refreshes_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_create_server(token: str, name: str, host: str, description: str | None) -> None:
+        captured.update(
+            token=token,
+            name=name,
+            host=host,
+            description=description,
+        )
+
+    monkeypatch.setattr("homelab_pulse.dashboard.create_server", fake_create_server)
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.fetch_servers",
+        lambda _token: [{"id": "server-1", "name": "Servidor principal"}],
+    )
+
+    result = submit_server(
+        1,
+        "jwt-token",
+        0,
+        "  Servidor principal  ",
+        "  192.168.1.50  ",
+        "  Homelab  ",
+    )
+    options, selected = update_server_options("jwt-token", result[0], None)
+
+    assert result == (
+        1,
+        "Servidor cadastrado com sucesso.",
+        "hp-message hp-message-success",
+        "",
+        "",
+        "",
+    )
+    assert captured == {
+        "token": "jwt-token",
+        "name": "Servidor principal",
+        "host": "192.168.1.50",
+        "description": "Homelab",
+    }
+    assert options == [{"label": "Servidor principal", "value": "server-1"}]
+    assert selected == "server-1"
+
+
+def test_service_form_creates_resource(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_create_service(
+        token: str,
+        server_id: str,
+        name: str,
+        kind: str,
+        target_url: str,
+    ) -> None:
+        captured.update(
+            token=token,
+            server_id=server_id,
+            name=name,
+            kind=kind,
+            target_url=target_url,
+        )
+
+    monkeypatch.setattr("homelab_pulse.dashboard.create_service", fake_create_service)
+
+    result = submit_service(
+        1,
+        "jwt-token",
+        0,
+        "server-1",
+        "  Jellyfin  ",
+        "jellyfin",
+        "  http://192.168.1.50:8096  ",
+    )
+
+    assert result == (
+        1,
+        "Serviço cadastrado com sucesso.",
+        "hp-message hp-message-success",
+        "",
+        "",
+    )
+    assert captured == {
+        "token": "jwt-token",
+        "server_id": "server-1",
+        "name": "Jellyfin",
+        "kind": "jellyfin",
+        "target_url": "http://192.168.1.50:8096",
+    }
+
+
+def test_dashboard_api_helpers_send_token_and_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[tuple[str, dict[str, object]]] = []
+
+    def fake_get(url: str, **kwargs: object) -> httpx.Response:
+        requests.append((url, kwargs))
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", url),
+            json=[{"id": "server-1", "name": "Servidor principal"}],
+        )
+
+    def fake_post(url: str, **kwargs: object) -> httpx.Response:
+        requests.append((url, kwargs))
+        return httpx.Response(201, request=httpx.Request("POST", url), json={})
+
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.get", fake_get)
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.post", fake_post)
+
+    servers = fetch_servers("jwt-token")
+    create_server("jwt-token", "Principal", "192.168.1.50", None)
+    create_service(
+        "jwt-token",
+        "server-1",
+        "Jellyfin",
+        "jellyfin",
+        "http://192.168.1.50:8096",
+    )
+
+    assert servers[0]["id"] == "server-1"
+    assert all(
+        request[1]["headers"] == {"Authorization": "Bearer jwt-token"} for request in requests
+    )
+    assert requests[1][1]["json"] == {
+        "name": "Principal",
+        "host": "192.168.1.50",
+        "description": None,
+    }
+
+
+@pytest.mark.parametrize(
+    ("status_code", "expected_message"),
+    [
+        (401, "Sua sessão expirou. Entre novamente."),
+        (409, "Já existe um serviço com esse nome neste servidor."),
+        (422, "Informe uma URL completa, incluindo http:// ou https://."),
+    ],
+)
+def test_create_service_translates_api_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+    expected_message: str,
+) -> None:
+    def fake_post(url: str, **_kwargs: object) -> httpx.Response:
+        return httpx.Response(status_code, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.post", fake_post)
+
+    with pytest.raises(DashboardApiError, match=expected_message):
+        create_service("jwt-token", "server-1", "Jellyfin", "jellyfin", "URL inválida")
+
+
 def test_dashboard_page_and_session_visibility() -> None:
     response = dashboard_app.server.test_client().get("/")
+    stylesheet = dashboard_app.server.test_client().get("/assets/dashboard.css")
 
     assert response.status_code == 200
     assert b"HomeLab Pulse" in response.data
+    assert stylesheet.status_code == 200
+    assert b".hp-input" in stylesheet.data
     assert update_visibility("token")[1]["display"] == "block"
     assert update_visibility(None)[0]["display"] == "flex"
