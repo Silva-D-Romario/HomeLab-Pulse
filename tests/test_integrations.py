@@ -86,6 +86,16 @@ async def test_credentials_are_encrypted_and_isolated_by_owner(
     assert stored.encrypted_api_key != api_key
     assert decrypt_api_key(stored.encrypted_api_key) == api_key
 
+    replacement_key = "new-sonarr-secret-key"
+    replaced = await client.put(
+        f"/api/v1/services/{service_id}/credential",
+        headers=owner_headers,
+        json={"api_key": replacement_key},
+    )
+    await db_session.refresh(stored)
+    assert replaced.status_code == 200
+    assert decrypt_api_key(stored.encrypted_api_key) == replacement_key
+
     deleted = await client.delete(
         f"/api/v1/services/{service_id}/credential",
         headers=owner_headers,
@@ -198,3 +208,42 @@ async def test_arr_probe_requires_a_credential() -> None:
 
     assert result.status == CheckStatus.DOWN
     assert result.detail == "Integration credential not configured"
+
+
+@pytest.mark.anyio
+async def test_check_handles_an_unreadable_credential(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    token, service_id = await create_integration_service(
+        client, "corrupted-credential@example.com", "arr", "Readarr"
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    credential = ServiceCredential(
+        service_id=uuid.UUID(service_id),
+        encrypted_api_key="corrupted-value",
+    )
+    db_session.add(credential)
+    await db_session.commit()
+
+    response = await client.post(f"/api/v1/services/{service_id}/check", headers=headers)
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "down"
+    assert response.json()["detail"] == "Integration credential cannot be decrypted"
+
+
+@pytest.mark.anyio
+async def test_rejects_credentials_for_a_generic_http_service(client: AsyncClient) -> None:
+    token, service_id = await create_integration_service(
+        client, "generic-http@example.com", "http", "Website"
+    )
+
+    response = await client.put(
+        f"/api/v1/services/{service_id}/credential",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"api_key": "unused-secret-key"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "This service type does not support integration credentials"
