@@ -8,6 +8,7 @@ flowchart LR
     A --> R[(Redis)]
     R --> C[Celery Worker]
     C --> H[Monitor HTTP]
+    H --> E[Adaptadores Jellyfin Portainer e arr]
     C --> G[Agente Docker somente leitura]
     H --> S[Serviços do homelab]
     G --> X[Containers Docker]
@@ -22,6 +23,7 @@ flowchart LR
 - **PostgreSQL:** usuários, servidores, serviços, métricas e incidentes.
 - **Redis/Celery:** fila e execução periódica das verificações.
 - **Monitor HTTP:** disponibilidade, latência e código de resposta.
+- **Adaptadores de integração:** consultam endpoints próprios do Jellyfin, Portainer e stack *arr e normalizam os metadados permitidos.
 - **Ciclo de incidentes:** abre um incidente na primeira falha, evita duplicidade enquanto ele está aberto e o resolve na recuperação do serviço.
 - **Agente Docker:** coleta somente leitura do estado e do consumo dos containers.
 - **Plotly Dash:** serviço web separado que autentica pela API e visualiza apenas os indicadores do usuário atual.
@@ -37,6 +39,12 @@ As senhas são armazenadas somente como hashes Argon2. Após o login, a API emit
 ## Segurança do Docker
 
 O socket Docker não é exposto diretamente à aplicação web. O agente acessa um proxy interno com somente os endpoints de leitura necessários e `POST=0`. O proxy não publica portas no host. O agente exige token Bearer, escuta apenas no loopback por padrão e pode ser disponibilizado por uma VPN privada. Tokens são recebidos por variáveis de ambiente e nunca versionados.
+
+## Credenciais das integrações
+
+Cada credencial pertence diretamente a um serviço e só pode ser criada, consultada ou removida pelo proprietário desse serviço. A chave da API é criptografada com Fernet antes da persistência. A API informa somente se existe uma credencial e quando ela foi atualizada, sem devolver o valor original ou o texto cifrado.
+
+O segredo `CREDENTIAL_ENCRYPTION_SECRET` deve ser diferente do `JWT_SECRET`, permanecer fora do repositório e ser mantido estável entre reinicializações. Os adaptadores enviam a chave apenas ao endereço configurado pelo usuário e persistem uma lista limitada de metadados técnicos, nunca a resposta completa do serviço externo.
 
 ## Processamento assíncrono
 
