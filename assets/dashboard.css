@@ -22,6 +22,34 @@ input {
   padding: 28px clamp(18px, 4vw, 64px) 56px;
 }
 
+.hp-auth-grid {
+  display: grid !important;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.hp-auth-card {
+  background: #102722;
+  border: 1px solid #24483e;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px;
+}
+
+.hp-logo {
+  background: #b7f34a;
+  border-radius: 50%;
+  color: #071713;
+  display: grid;
+  font-weight: 900;
+  height: 42px;
+  place-items: center;
+  width: 42px;
+}
+
 .hp-login-title,
 .hp-dashboard-title,
 .hp-section-title {
@@ -96,6 +124,12 @@ input {
   color: #eef8f4;
 }
 
+.hp-button-danger {
+  background: transparent;
+  border-color: #ff6b6b;
+  color: #ff9292;
+}
+
 .hp-header {
   align-items: center;
   display: flex;
@@ -146,6 +180,22 @@ input {
   margin-top: 4px;
 }
 
+.hp-form-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 4px;
+}
+
+.hp-management-title {
+  margin-top: 34px;
+}
+
+.hp-checklist {
+  color: #dce9e4;
+  font-weight: 700;
+}
+
 .hp-section-title {
   font-size: 1.3rem;
 }
@@ -188,6 +238,16 @@ input {
   color: #0a211b;
 }
 
+.hp-dropdown,
+.hp-dropdown .Select-control,
+.hp-dropdown .Select-value,
+.hp-dropdown .Select-value span,
+.hp-dropdown .Select-value-label,
+.hp-dropdown .Select-input,
+.hp-dropdown .Select-input input {
+  color: #0a211b !important;
+}
+
 .hp-dropdown .Select-control {
   border-radius: 10px;
   min-height: 46px;
@@ -197,6 +257,10 @@ input {
 .hp-dropdown .Select-value-label,
 .hp-dropdown .Select-input > input {
   color: #0a211b !important;
+}
+
+.hp-dropdown .Select-placeholder {
+  color: #657b73 !important;
 }
 
 .hp-dropdown .VirtualizedSelectOption {
@@ -263,6 +327,15 @@ input {
 
   .hp-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hp-auth-grid {
+    grid-template-columns: 1fr;
+    margin-top: 2vh !important;
+  }
+
+  .hp-auth-card {
+    padding: 24px;
   }
 
   .hp-header-actions,

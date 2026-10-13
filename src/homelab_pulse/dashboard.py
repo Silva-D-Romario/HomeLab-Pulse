@@ -21,14 +21,9 @@ COLORS = {
     "blue": "#61a5ff",
 }
 LOGIN_PANEL_STYLE = {
-    "background": COLORS["surface"],
-    "borderRadius": "18px",
     "display": "flex",
-    "flexDirection": "column",
-    "gap": "14px",
-    "margin": "12vh auto",
-    "maxWidth": "380px",
-    "padding": "32px",
+    "margin": "8vh auto",
+    "maxWidth": "900px",
 }
 
 
@@ -51,6 +46,27 @@ def authenticate(email: str, password: str) -> str:
     except httpx.HTTPError as error:
         raise DashboardApiError("Não foi possível conectar à API.") from error
     return str(response.json()["access_token"])
+
+
+def register_user(name: str, email: str, password: str) -> str:
+    try:
+        response = httpx.post(
+            f"{settings.api_base_url}/api/v1/auth/register",
+            json={"name": name, "email": email, "password": password},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 409:
+            message = "Este e-mail já está cadastrado."
+        elif error.response.status_code == 422:
+            message = "Revise o nome, o e-mail e a senha informados."
+        else:
+            message = "Não foi possível criar a conta."
+        raise DashboardApiError(message) from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("Não foi possível conectar à API.") from error
+    return authenticate(email, password)
 
 
 def fetch_dashboard(token: str) -> dict[str, Any]:
@@ -87,6 +103,33 @@ def fetch_servers(token: str) -> list[dict[str, Any]]:
     return list(response.json())
 
 
+def fetch_services(token: str, server_id: str) -> list[dict[str, Any]]:
+    try:
+        response = httpx.get(
+            f"{settings.api_base_url}/api/v1/servers/{server_id}/services",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 401:
+            raise DashboardApiError("Sua sessão expirou. Entre novamente.") from error
+        raise DashboardApiError("Não foi possível carregar os serviços.") from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+    return list(response.json())
+
+
+def fetch_all_services(token: str, servers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    services: list[dict[str, Any]] = []
+    for server in servers:
+        server_services = fetch_services(token, server["id"])
+        for service in server_services:
+            service["server_name"] = server["name"]
+        services.extend(server_services)
+    return services
+
+
 def create_server(token: str, name: str, host: str, description: str | None) -> None:
     try:
         response = httpx.post(
@@ -108,6 +151,45 @@ def create_server(token: str, name: str, host: str, description: str | None) -> 
         raise DashboardApiError(message) from error
     except httpx.HTTPError as error:
         raise DashboardApiError("A API está indisponível no momento.") from error
+
+
+def update_server_resource(
+    token: str,
+    server_id: str,
+    name: str,
+    host: str,
+    description: str | None,
+) -> None:
+    try:
+        response = httpx.patch(
+            f"{settings.api_base_url}/api/v1/servers/{server_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"name": name, "host": host, "description": description or None},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 409:
+            message = "Já existe um servidor com esse nome."
+        elif error.response.status_code == 422:
+            message = "Revise os dados informados para o servidor."
+        else:
+            message = "Não foi possível atualizar o servidor."
+        raise DashboardApiError(message) from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+
+
+def delete_server_resource(token: str, server_id: str) -> None:
+    try:
+        response = httpx.delete(
+            f"{settings.api_base_url}/api/v1/servers/{server_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as error:
+        raise DashboardApiError("Não foi possível excluir o servidor.") from error
 
 
 def create_service(
@@ -137,6 +219,51 @@ def create_service(
         raise DashboardApiError(message) from error
     except httpx.HTTPError as error:
         raise DashboardApiError("A API está indisponível no momento.") from error
+
+
+def update_service_resource(
+    token: str,
+    service_id: str,
+    name: str,
+    kind: str,
+    target_url: str,
+    enabled: bool,
+) -> None:
+    try:
+        response = httpx.patch(
+            f"{settings.api_base_url}/api/v1/services/{service_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "name": name,
+                "kind": kind,
+                "target_url": target_url,
+                "enabled": enabled,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 409:
+            message = "Já existe um serviço com esse nome neste servidor."
+        elif error.response.status_code == 422:
+            message = "Informe uma URL completa, incluindo http:// ou https://."
+        else:
+            message = "Não foi possível atualizar o serviço."
+        raise DashboardApiError(message) from error
+    except httpx.HTTPError as error:
+        raise DashboardApiError("A API está indisponível no momento.") from error
+
+
+def delete_service_resource(token: str, service_id: str) -> None:
+    try:
+        response = httpx.delete(
+            f"{settings.api_base_url}/api/v1/services/{service_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as error:
+        raise DashboardApiError("Não foi possível excluir o serviço.") from error
 
 
 def chart_layout(title: str) -> dict[str, Any]:
@@ -300,46 +427,94 @@ app.layout = html.Main(
         dcc.Store(id="auth-token", storage_type="session"),
         dcc.Store(id="server-revision", data=0),
         dcc.Store(id="service-revision", data=0),
+        dcc.Store(id="servers-data", data=[]),
+        dcc.Store(id="services-data", data=[]),
         dcc.Interval(id="refresh-interval", interval=30_000),
         html.Section(
             [
                 html.Div(
-                    "HP",
-                    style={
-                        "background": COLORS["green"],
-                        "borderRadius": "50%",
-                        "color": COLORS["background"],
-                        "display": "grid",
-                        "fontWeight": "800",
-                        "height": "42px",
-                        "placeItems": "center",
-                        "width": "42px",
-                    },
+                    [
+                        html.Div("HP", className="hp-logo"),
+                        html.H1("HomeLab Pulse", className="hp-login-title"),
+                        html.P(
+                            "Entre para gerenciar e monitorar seu homelab.",
+                            className="hp-login-description",
+                        ),
+                        html.Label("E-mail", htmlFor="email", className="hp-label"),
+                        dcc.Input(
+                            id="email",
+                            type="email",
+                            placeholder="voce@exemplo.com",
+                            className="hp-input",
+                        ),
+                        html.Label("Senha", htmlFor="password", className="hp-label"),
+                        dcc.Input(
+                            id="password",
+                            type="password",
+                            placeholder="Digite sua senha",
+                            className="hp-input",
+                        ),
+                        html.Button(
+                            "Entrar",
+                            id="login-button",
+                            className="hp-button hp-button-primary",
+                        ),
+                        html.P(id="login-message", className="hp-message hp-message-error"),
+                    ],
+                    className="hp-auth-card",
                 ),
-                html.H1("HomeLab Pulse", className="hp-login-title"),
-                html.P(
-                    "Monitore seus serviços e containers em um só lugar.",
-                    className="hp-login-description",
+                html.Div(
+                    [
+                        html.P("PRIMEIRO ACESSO", className="hp-eyebrow"),
+                        html.H2("Criar conta", className="hp-section-title"),
+                        html.P(
+                            "Seus servidores e serviços ficam isolados dos outros usuários.",
+                            className="hp-login-description",
+                        ),
+                        html.Label("Nome", htmlFor="register-name", className="hp-label"),
+                        dcc.Input(
+                            id="register-name",
+                            placeholder="Seu nome",
+                            className="hp-input",
+                        ),
+                        html.Label("E-mail", htmlFor="register-email", className="hp-label"),
+                        dcc.Input(
+                            id="register-email",
+                            type="email",
+                            placeholder="voce@exemplo.com",
+                            className="hp-input",
+                        ),
+                        html.Label("Senha", htmlFor="register-password", className="hp-label"),
+                        dcc.Input(
+                            id="register-password",
+                            type="password",
+                            placeholder="Mínimo de 8 caracteres",
+                            className="hp-input",
+                        ),
+                        html.Label(
+                            "Confirmar senha",
+                            htmlFor="register-password-confirmation",
+                            className="hp-label",
+                        ),
+                        dcc.Input(
+                            id="register-password-confirmation",
+                            type="password",
+                            placeholder="Repita a senha",
+                            className="hp-input",
+                        ),
+                        html.Button(
+                            "Criar conta",
+                            id="register-button",
+                            className="hp-button hp-button-secondary",
+                        ),
+                        html.P(id="register-message", className="hp-message"),
+                    ],
+                    className="hp-auth-card",
                 ),
-                html.Label("E-mail", htmlFor="email", className="hp-label"),
-                dcc.Input(
-                    id="email",
-                    type="email",
-                    placeholder="voce@exemplo.com",
-                    className="hp-input",
-                ),
-                html.Label("Senha", htmlFor="password", className="hp-label"),
-                dcc.Input(
-                    id="password",
-                    type="password",
-                    placeholder="Digite sua senha",
-                    className="hp-input",
-                ),
-                html.Button("Entrar", id="login-button", className="hp-button hp-button-primary"),
-                html.P(id="login-message", className="hp-message hp-message-error"),
             ],
             id="login-panel",
             style=LOGIN_PANEL_STYLE,
+            className="hp-auth-grid",
         ),
         html.Section(
             [
@@ -470,6 +645,136 @@ app.layout = html.Main(
                     ],
                     className="hp-form-grid",
                 ),
+                html.H2("Gerenciar recursos", className="hp-section-title hp-management-title"),
+                html.Section(
+                    [
+                        html.Div(
+                            [
+                                html.P("SERVIDORES", className="hp-eyebrow"),
+                                html.Label(
+                                    "Servidor para editar",
+                                    htmlFor="manage-server",
+                                    className="hp-label",
+                                ),
+                                dcc.Dropdown(
+                                    id="manage-server",
+                                    placeholder="Selecione um servidor",
+                                    className="hp-dropdown",
+                                    clearable=False,
+                                ),
+                                html.Label(
+                                    "Nome", htmlFor="edit-server-name", className="hp-label"
+                                ),
+                                dcc.Input(id="edit-server-name", className="hp-input"),
+                                html.Label(
+                                    "Host ou IP",
+                                    htmlFor="edit-server-host",
+                                    className="hp-label",
+                                ),
+                                dcc.Input(id="edit-server-host", className="hp-input"),
+                                html.Label(
+                                    "Descrição",
+                                    htmlFor="edit-server-description",
+                                    className="hp-label",
+                                ),
+                                dcc.Input(id="edit-server-description", className="hp-input"),
+                                html.Div(
+                                    [
+                                        html.Button(
+                                            "Salvar servidor",
+                                            id="save-server-button",
+                                            className="hp-button hp-button-primary",
+                                        ),
+                                        dcc.ConfirmDialogProvider(
+                                            html.Button(
+                                                "Excluir",
+                                                id="delete-server-button",
+                                                className="hp-button hp-button-danger",
+                                            ),
+                                            message=(
+                                                "Excluir o servidor e todos os seus serviços? "
+                                                "Esta ação não pode ser desfeita."
+                                            ),
+                                        ),
+                                    ],
+                                    className="hp-form-actions",
+                                ),
+                                html.P(id="manage-server-message", className="hp-message"),
+                            ],
+                            className="hp-form-card",
+                        ),
+                        html.Div(
+                            [
+                                html.P("SERVIÇOS", className="hp-eyebrow"),
+                                html.Label(
+                                    "Serviço para editar",
+                                    htmlFor="manage-service",
+                                    className="hp-label",
+                                ),
+                                dcc.Dropdown(
+                                    id="manage-service",
+                                    placeholder="Selecione um serviço",
+                                    className="hp-dropdown",
+                                    clearable=False,
+                                ),
+                                html.Label(
+                                    "Nome", htmlFor="edit-service-name", className="hp-label"
+                                ),
+                                dcc.Input(id="edit-service-name", className="hp-input"),
+                                html.Label(
+                                    "Tipo", htmlFor="edit-service-kind", className="hp-label"
+                                ),
+                                dcc.Dropdown(
+                                    id="edit-service-kind",
+                                    options=[
+                                        {"label": "HTTP genérico", "value": "http"},
+                                        {"label": "Jellyfin", "value": "jellyfin"},
+                                        {"label": "Portainer", "value": "portainer"},
+                                        {"label": "Stack arr", "value": "arr"},
+                                    ],
+                                    clearable=False,
+                                    className="hp-dropdown",
+                                ),
+                                html.Label(
+                                    "URL do serviço",
+                                    htmlFor="edit-service-target-url",
+                                    className="hp-label",
+                                ),
+                                dcc.Input(id="edit-service-target-url", className="hp-input"),
+                                dcc.Checklist(
+                                    id="edit-service-enabled",
+                                    options=[{"label": " Monitoramento ativo", "value": "enabled"}],
+                                    value=["enabled"],
+                                    className="hp-checklist",
+                                ),
+                                html.Div(
+                                    [
+                                        html.Button(
+                                            "Salvar serviço",
+                                            id="save-service-button",
+                                            className="hp-button hp-button-primary",
+                                        ),
+                                        dcc.ConfirmDialogProvider(
+                                            html.Button(
+                                                "Excluir",
+                                                id="delete-service-button",
+                                                className="hp-button hp-button-danger",
+                                            ),
+                                            message=(
+                                                "Excluir este serviço e seu histórico? "
+                                                "Esta ação não pode ser desfeita."
+                                            ),
+                                        ),
+                                    ],
+                                    className="hp-form-actions",
+                                ),
+                                html.P(id="manage-service-message", className="hp-message"),
+                            ],
+                            className="hp-form-card",
+                        ),
+                    ],
+                    className="hp-form-grid hp-management-grid",
+                ),
                 html.Div(
                     [
                         kpi_card("Servidores", "servers-total"),
@@ -506,27 +811,48 @@ app.layout = html.Main(
 @app.callback(
     Output("auth-token", "data"),
     Output("login-message", "children"),
+    Output("register-message", "children"),
     Input("login-button", "n_clicks"),
+    Input("register-button", "n_clicks"),
     Input("logout-button", "n_clicks"),
     State("email", "value"),
     State("password", "value"),
+    State("register-name", "value"),
+    State("register-email", "value"),
+    State("register-password", "value"),
+    State("register-password-confirmation", "value"),
     prevent_initial_call=True,
 )
 def update_session(
     _login_clicks: int | None,
+    _register_clicks: int | None,
     _logout_clicks: int | None,
     email: str | None,
     password: str | None,
-) -> tuple[str | None, str]:
+    register_name: str | None,
+    register_email: str | None,
+    register_password: str | None,
+    register_password_confirmation: str | None,
+) -> tuple[str | None, str, str]:
     if ctx.triggered_id == "logout-button":
-        return None, ""
+        return None, "", ""
+    if ctx.triggered_id == "register-button":
+        if not register_name or not register_email or not register_password:
+            return None, "", "Preencha nome, e-mail e senha."
+        if register_password != register_password_confirmation:
+            return None, "", "As senhas não coincidem."
+        try:
+            token = register_user(register_name.strip(), register_email.strip(), register_password)
+        except DashboardApiError as error:
+            return None, "", str(error)
+        return token, "", "Conta criada com sucesso."
     if not email or not password:
-        return None, "Informe e-mail e senha."
+        return None, "Informe e-mail e senha.", ""
     try:
         token = authenticate(email, password)
     except DashboardApiError as error:
-        return None, str(error)
-    return token, ""
+        return None, str(error), ""
+    return token, "", ""
 
 
 @app.callback(
@@ -541,29 +867,108 @@ def update_visibility(token: str | None) -> tuple[dict[str, str], dict[str, str]
 
 
 @app.callback(
-    Output("service-server", "options"),
-    Output("service-server", "value"),
+    Output("servers-data", "data"),
+    Output("services-data", "data"),
     Input("auth-token", "data"),
     Input("server-revision", "data"),
-    State("service-server", "value"),
+    Input("service-revision", "data"),
 )
-def update_server_options(
+def load_resource_data(
     token: str | None,
-    _revision: int,
-    selected_server: str | None,
-) -> tuple[list[dict[str, str]], str | None]:
+    _server_revision: int,
+    _service_revision: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if not token:
-        return [], None
+        return [], []
     try:
         servers = fetch_servers(token)
+        services = fetch_all_services(token, servers)
     except DashboardApiError:
-        return [], None
+        return [], []
+    return servers, services
+
+
+def keep_available_value(options: list[dict[str, str]], selected_value: str | None) -> str | None:
+    available_values = {option["value"] for option in options}
+    if selected_value in available_values:
+        return selected_value
+    return options[0]["value"] if options else None
+
+
+@app.callback(
+    Output("service-server", "options"),
+    Output("service-server", "value"),
+    Output("manage-server", "options"),
+    Output("manage-server", "value"),
+    Output("manage-service", "options"),
+    Output("manage-service", "value"),
+    Input("servers-data", "data"),
+    Input("services-data", "data"),
+    State("service-server", "value"),
+    State("manage-server", "value"),
+    State("manage-service", "value"),
+)
+def update_resource_options(
+    servers: list[dict[str, Any]],
+    services: list[dict[str, Any]],
+    create_server_value: str | None,
+    manage_server_value: str | None,
+    manage_service_value: str | None,
+) -> tuple[Any, ...]:
     options = [{"label": server["name"], "value": server["id"]} for server in servers]
-    available_ids = {option["value"] for option in options}
-    value = selected_server if selected_server in available_ids else None
-    if value is None and options:
-        value = options[0]["value"]
-    return options, value
+    service_options = [
+        {
+            "label": f"{service['server_name']} — {service['name']}",
+            "value": service["id"],
+        }
+        for service in services
+    ]
+    return (
+        options,
+        keep_available_value(options, create_server_value),
+        options,
+        keep_available_value(options, manage_server_value),
+        service_options,
+        keep_available_value(service_options, manage_service_value),
+    )
+
+
+@app.callback(
+    Output("edit-server-name", "value"),
+    Output("edit-server-host", "value"),
+    Output("edit-server-description", "value"),
+    Input("manage-server", "value"),
+    Input("servers-data", "data"),
+)
+def populate_server_form(
+    server_id: str | None, servers: list[dict[str, Any]]
+) -> tuple[str, str, str]:
+    server = next((item for item in servers if item["id"] == server_id), None)
+    if server is None:
+        return "", "", ""
+    return server["name"], server["host"], server.get("description") or ""
+
+
+@app.callback(
+    Output("edit-service-name", "value"),
+    Output("edit-service-kind", "value"),
+    Output("edit-service-target-url", "value"),
+    Output("edit-service-enabled", "value"),
+    Input("manage-service", "value"),
+    Input("services-data", "data"),
+)
+def populate_service_form(
+    service_id: str | None, services: list[dict[str, Any]]
+) -> tuple[str, str | None, str, list[str]]:
+    service = next((item for item in services if item["id"] == service_id), None)
+    if service is None:
+        return "", None, "", []
+    return (
+        service["name"],
+        str(service["kind"]).lower(),
+        service["target_url"],
+        ["enabled"] if service["enabled"] else [],
+    )
 
 
 @app.callback(
@@ -681,6 +1086,103 @@ def submit_service(
         "",
         "",
     )
+
+
+@app.callback(
+    Output("server-revision", "data", allow_duplicate=True),
+    Output("manage-server-message", "children"),
+    Output("manage-server-message", "className"),
+    Input("save-server-button", "n_clicks"),
+    Input("delete-server-button", "n_clicks"),
+    State("auth-token", "data"),
+    State("server-revision", "data"),
+    State("manage-server", "value"),
+    State("edit-server-name", "value"),
+    State("edit-server-host", "value"),
+    State("edit-server-description", "value"),
+    prevent_initial_call=True,
+)
+def manage_server_resource(
+    _save_clicks: int | None,
+    _delete_clicks: int | None,
+    token: str | None,
+    revision: int,
+    server_id: str | None,
+    name: str | None,
+    host: str | None,
+    description: str | None,
+) -> tuple[int, str, str]:
+    error_class = "hp-message hp-message-error"
+    if not token or not server_id:
+        return revision, "Selecione um servidor.", error_class
+    try:
+        if ctx.triggered_id == "delete-server-button":
+            delete_server_resource(token, server_id)
+            message = "Servidor e serviços vinculados excluídos."
+        else:
+            if not name or not host:
+                return revision, "Informe o nome e o host do servidor.", error_class
+            update_server_resource(
+                token,
+                server_id,
+                name.strip(),
+                host.strip(),
+                description.strip() if description else None,
+            )
+            message = "Servidor atualizado com sucesso."
+    except DashboardApiError as error:
+        return revision, str(error), error_class
+    return revision + 1, message, "hp-message hp-message-success"
+
+
+@app.callback(
+    Output("service-revision", "data", allow_duplicate=True),
+    Output("manage-service-message", "children"),
+    Output("manage-service-message", "className"),
+    Input("save-service-button", "n_clicks"),
+    Input("delete-service-button", "n_clicks"),
+    State("auth-token", "data"),
+    State("service-revision", "data"),
+    State("manage-service", "value"),
+    State("edit-service-name", "value"),
+    State("edit-service-kind", "value"),
+    State("edit-service-target-url", "value"),
+    State("edit-service-enabled", "value"),
+    prevent_initial_call=True,
+)
+def manage_service_resource(
+    _save_clicks: int | None,
+    _delete_clicks: int | None,
+    token: str | None,
+    revision: int,
+    service_id: str | None,
+    name: str | None,
+    kind: str | None,
+    target_url: str | None,
+    enabled_values: list[str],
+) -> tuple[int, str, str]:
+    error_class = "hp-message hp-message-error"
+    if not token or not service_id:
+        return revision, "Selecione um serviço.", error_class
+    try:
+        if ctx.triggered_id == "delete-service-button":
+            delete_service_resource(token, service_id)
+            message = "Serviço excluído com sucesso."
+        else:
+            if not name or not kind or not target_url:
+                return revision, "Informe nome, tipo e URL do serviço.", error_class
+            update_service_resource(
+                token,
+                service_id,
+                name.strip(),
+                kind,
+                target_url.strip(),
+                "enabled" in enabled_values,
+            )
+            message = "Serviço atualizado com sucesso."
+    except DashboardApiError as error:
+        return revision, str(error), error_class
+    return revision + 1, message, "hp-message hp-message-success"
 
 
 @app.callback(
