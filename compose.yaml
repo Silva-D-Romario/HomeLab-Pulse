@@ -1,6 +1,6 @@
 x-app-environment: &app-environment
   APP_ENVIRONMENT: development
-  APP_VERSION: 0.9.0
+  APP_VERSION: 0.9.1
   DATABASE_URL: postgresql+psycopg://homelab_pulse:homelab_pulse@database:5432/homelab_pulse
   REDIS_URL: redis://redis:6379/0
   API_BASE_URL: http://api:8000

@@ -4,7 +4,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: versão 0.9.0 concluída — painel com autenticação, CRUD e monitoramento.
+> Status: versão 0.9.1 concluída — painel com autenticação, CRUD e monitoramento.
 
 ## O que o projeto demonstrará
 
@@ -46,7 +46,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -167,7 +167,7 @@ O intervalo padrão é de 60 segundos e pode ser alterado com `MONITOR_INTERVAL_
 
 ## Dashboard
 
-O painel Plotly Dash fica disponível em `http://localhost:8050`. É possível criar uma conta, entrar e gerenciar servidores e serviços sem usar o Swagger. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
+O painel Plotly Dash fica disponível em `http://localhost:8050`. Login e cadastro usam telas separadas. Depois da autenticação, a navegação divide o dashboard de monitoramento da tela de cadastro e gerenciamento de servidores e serviços. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
 
 Depois de entrar, cadastre primeiro o servidor e depois o serviço. O host identifica a máquina, por exemplo `192.168.1.50`; a URL do serviço deve conter o protocolo e a porta. Servidores e serviços podem ser editados, ativados, desativados ou excluídos pela interface.
 

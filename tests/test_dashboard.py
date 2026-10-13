@@ -21,8 +21,12 @@ from homelab_pulse.dashboard import (
     populate_server_form,
     populate_service_form,
     register_user,
+    select_active_view,
+    select_auth_view,
     submit_server,
     submit_service,
+    update_active_view,
+    update_auth_view,
     update_resource_options,
     update_server_resource,
     update_service_resource,
@@ -597,3 +601,51 @@ def test_dashboard_page_and_session_visibility() -> None:
     assert b".hp-input" in stylesheet.data
     assert update_visibility("token")[1]["display"] == "block"
     assert update_visibility(None)[0]["display"] == "flex"
+
+
+def test_authentication_forms_are_shown_separately(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="show-register-button")
+    )
+    assert select_auth_view(1, None) == "register"
+    assert update_auth_view("register") == (
+        {"display": "none"},
+        {"display": "flex"},
+    )
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="show-login-button")
+    )
+    assert select_auth_view(None, 1) == "login"
+    assert update_auth_view("login") == (
+        {"display": "flex"},
+        {"display": "none"},
+    )
+
+
+def test_dashboard_and_resources_are_shown_separately(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="show-resources-button")
+    )
+    assert select_active_view(None, 1, "token") == "resources"
+    assert update_active_view("resources") == (
+        {"display": "none"},
+        {"display": "block"},
+        "Servidores e serviços",
+        "CONFIGURAÇÃO DO HOMELAB",
+    )
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="show-dashboard-button")
+    )
+    assert select_active_view(1, None, "token") == "dashboard"
+    assert update_active_view("dashboard") == (
+        {"display": "block"},
+        {"display": "none"},
+        "HomeLab Pulse",
+        "PAINEL DE MONITORAMENTO",
+    )
