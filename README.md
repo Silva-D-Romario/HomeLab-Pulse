@@ -4,7 +4,7 @@
 
 API e dashboard para acompanhar a saúde de serviços e containers de um homelab. O objetivo é centralizar disponibilidade, métricas e incidentes de aplicações como Jellyfin, Stirling PDF, Portainer e serviços da stack *arr.
 
-> Status: versão 0.8.1 concluída — projeto testado, documentado e preparado para deploy.
+> Status: versão 0.9.0 concluída — painel com autenticação, CRUD e monitoramento.
 
 ## O que o projeto demonstrará
 
@@ -46,7 +46,7 @@ Resposta esperada do health check:
 {
   "application": "HomeLab Pulse",
   "environment": "development",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "status": "UP",
   "timestamp": "2026-10-08T12:00:00Z"
 }
@@ -167,9 +167,14 @@ O intervalo padrão é de 60 segundos e pode ser alterado com `MONITOR_INTERVAL_
 
 ## Dashboard
 
-O dashboard Plotly Dash fica disponível em `http://localhost:8050`. Use a mesma conta criada na API. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
+O painel Plotly Dash fica disponível em `http://localhost:8050`. É possível criar uma conta, entrar e gerenciar servidores e serviços sem usar o Swagger. O token permanece apenas na sessão do navegador e todas as consultas são filtradas pelo usuário autenticado.
 
-Depois de entrar, cadastre primeiro o servidor e depois o serviço nos formulários do próprio painel. Não é necessário usar o Swagger para esse fluxo. O host identifica a máquina, por exemplo `192.168.1.50`; a URL do serviço deve conter o protocolo e a porta, por exemplo `http://192.168.1.50:8096`.
+Depois de entrar, cadastre primeiro o servidor e depois o serviço. O host identifica a máquina, por exemplo `192.168.1.50`; a URL do serviço deve conter o protocolo e a porta. Servidores e serviços podem ser editados, ativados, desativados ou excluídos pela interface.
+
+Quando o HomeLab Pulse e os serviços monitorados estiverem em containers separados, não use `localhost`. O Compose permite alcançar as portas publicadas no host pelo nome `host.docker.internal`. Exemplos:
+
+- Jellyfin: `http://host.docker.internal:8096`
+- Portainer: `http://host.docker.internal:9000`
 
 Indicadores disponíveis:
 
@@ -202,7 +207,7 @@ Consulte [a documentação de segurança do agente](docs/docker-agent.md) antes 
 - chaves externas criptografadas e nunca devolvidas pela API;
 - segredos fracos e SQLite bloqueados no ambiente de produção;
 - cabeçalhos HTTP defensivos;
-- CI com Ruff, 32 testes, cobertura mínima de 75% e auditoria de dependências.
+- CI com Ruff, 46 testes, cobertura mínima de 75% e auditoria de dependências.
 
 ## Deploy
 
