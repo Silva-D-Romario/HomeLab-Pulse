@@ -22,10 +22,9 @@ input {
   padding: 28px clamp(18px, 4vw, 64px) 56px;
 }
 
-.hp-auth-grid {
-  display: grid !important;
-  gap: 18px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.hp-auth-shell {
+  align-items: stretch;
+  justify-content: center;
   width: 100%;
 }
 
@@ -36,7 +35,23 @@ input {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  margin: 0 auto;
+  max-width: 480px;
   padding: 32px;
+  width: 100%;
+}
+
+.hp-auth-link {
+  align-self: center;
+  background: transparent;
+  border: 0;
+  color: #b7f34a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 6px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .hp-logo {
@@ -329,8 +344,7 @@ input {
     grid-template-columns: 1fr;
   }
 
-  .hp-auth-grid {
-    grid-template-columns: 1fr;
+  .hp-auth-shell {
     margin-top: 2vh !important;
   }
 

@@ -429,6 +429,8 @@ app.layout = html.Main(
         dcc.Store(id="service-revision", data=0),
         dcc.Store(id="servers-data", data=[]),
         dcc.Store(id="services-data", data=[]),
+        dcc.Store(id="auth-view", data="login"),
+        dcc.Store(id="active-view", data="dashboard"),
         dcc.Interval(id="refresh-interval", interval=30_000),
         html.Section(
             [
@@ -460,7 +462,13 @@ app.layout = html.Main(
                             className="hp-button hp-button-primary",
                         ),
                         html.P(id="login-message", className="hp-message hp-message-error"),
+                        html.Button(
+                            "Criar uma conta",
+                            id="show-register-button",
+                            className="hp-auth-link",
+                        ),
                     ],
+                    id="login-form-card",
                     className="hp-auth-card",
                 ),
                 html.Div(
@@ -508,13 +516,20 @@ app.layout = html.Main(
                             className="hp-button hp-button-secondary",
                         ),
                         html.P(id="register-message", className="hp-message"),
+                        html.Button(
+                            "Já tenho uma conta",
+                            id="show-login-button",
+                            className="hp-auth-link",
+                        ),
                     ],
+                    id="register-form-card",
+                    style={"display": "none"},
                     className="hp-auth-card",
                 ),
             ],
             id="login-panel",
             style=LOGIN_PANEL_STYLE,
-            className="hp-auth-grid",
+            className="hp-auth-shell",
         ),
         html.Section(
             [
@@ -522,13 +537,31 @@ app.layout = html.Main(
                     [
                         html.Div(
                             [
-                                html.P("PAINEL DE MONITORAMENTO", className="hp-eyebrow"),
-                                html.H1("HomeLab Pulse", className="hp-dashboard-title"),
+                                html.P(
+                                    "PAINEL DE MONITORAMENTO",
+                                    id="view-eyebrow",
+                                    className="hp-eyebrow",
+                                ),
+                                html.H1(
+                                    "HomeLab Pulse",
+                                    id="view-title",
+                                    className="hp-dashboard-title",
+                                ),
                                 html.P(id="updated-at", className="hp-updated-at"),
                             ]
                         ),
                         html.Div(
                             [
+                                html.Button(
+                                    "Dashboard",
+                                    id="show-dashboard-button",
+                                    className="hp-button hp-button-ghost",
+                                ),
+                                html.Button(
+                                    "Servidores e serviços",
+                                    id="show-resources-button",
+                                    className="hp-button hp-button-ghost",
+                                ),
                                 html.Button(
                                     "Atualizar",
                                     id="refresh-button",
@@ -546,252 +579,297 @@ app.layout = html.Main(
                     className="hp-header",
                 ),
                 html.P(id="dashboard-message", className="hp-message hp-message-error"),
-                html.Section(
+                html.Div(
                     [
-                        html.Div(
+                        html.Section(
                             [
-                                html.P("CONFIGURAÇÃO", className="hp-eyebrow"),
-                                html.H2("Cadastrar servidor", className="hp-section-title"),
-                                html.P(
-                                    "Use um nome e o endereço do equipamento na sua rede.",
-                                    className="hp-help",
-                                ),
-                                html.Label("Nome", htmlFor="server-name", className="hp-label"),
-                                dcc.Input(
-                                    id="server-name",
-                                    placeholder="Servidor de mídia",
-                                    className="hp-input",
-                                ),
-                                html.Label(
-                                    "Host ou IP", htmlFor="server-host", className="hp-label"
-                                ),
-                                dcc.Input(
-                                    id="server-host",
-                                    placeholder="192.168.1.50",
-                                    className="hp-input",
-                                ),
-                                html.Label(
-                                    "Descrição", htmlFor="server-description", className="hp-label"
-                                ),
-                                dcc.Input(
-                                    id="server-description",
-                                    placeholder="Opcional",
-                                    className="hp-input",
-                                ),
-                                html.Button(
-                                    "Cadastrar servidor",
-                                    id="create-server-button",
-                                    className="hp-button hp-button-primary",
-                                ),
-                                html.P(id="server-message", className="hp-message"),
-                            ],
-                            className="hp-form-card",
-                        ),
-                        html.Div(
-                            [
-                                html.P("MONITORAMENTO", className="hp-eyebrow"),
-                                html.H2("Cadastrar serviço", className="hp-section-title"),
-                                html.P(
-                                    "Depois do servidor, informe o endereço do serviço.",
-                                    className="hp-help",
-                                ),
-                                html.Label(
-                                    "Servidor", htmlFor="service-server", className="hp-label"
-                                ),
-                                dcc.Dropdown(
-                                    id="service-server",
-                                    placeholder="Selecione um servidor",
-                                    className="hp-dropdown",
-                                    clearable=False,
-                                ),
-                                html.Label("Nome", htmlFor="service-name", className="hp-label"),
-                                dcc.Input(
-                                    id="service-name",
-                                    placeholder="Jellyfin",
-                                    className="hp-input",
-                                ),
-                                html.Label("Tipo", htmlFor="service-kind", className="hp-label"),
-                                dcc.Dropdown(
-                                    id="service-kind",
-                                    options=[
-                                        {"label": "HTTP genérico", "value": "http"},
-                                        {"label": "Jellyfin", "value": "jellyfin"},
-                                        {"label": "Portainer", "value": "portainer"},
-                                        {"label": "Stack arr", "value": "arr"},
-                                    ],
-                                    value="http",
-                                    clearable=False,
-                                    className="hp-dropdown",
-                                ),
-                                html.Label(
-                                    "URL do serviço",
-                                    htmlFor="service-target-url",
-                                    className="hp-label",
-                                ),
-                                dcc.Input(
-                                    id="service-target-url",
-                                    placeholder="http://192.168.1.50:8096",
-                                    className="hp-input",
-                                ),
-                                html.Button(
-                                    "Cadastrar serviço",
-                                    id="create-service-button",
-                                    className="hp-button hp-button-primary",
-                                ),
-                                html.P(id="service-message", className="hp-message"),
-                            ],
-                            className="hp-form-card",
-                        ),
-                    ],
-                    className="hp-form-grid",
-                ),
-                html.H2("Gerenciar recursos", className="hp-section-title hp-management-title"),
-                html.Section(
-                    [
-                        html.Div(
-                            [
-                                html.P("SERVIDORES", className="hp-eyebrow"),
-                                html.Label(
-                                    "Servidor para editar",
-                                    htmlFor="manage-server",
-                                    className="hp-label",
-                                ),
-                                dcc.Dropdown(
-                                    id="manage-server",
-                                    placeholder="Selecione um servidor",
-                                    className="hp-dropdown",
-                                    clearable=False,
-                                ),
-                                html.Label(
-                                    "Nome", htmlFor="edit-server-name", className="hp-label"
-                                ),
-                                dcc.Input(id="edit-server-name", className="hp-input"),
-                                html.Label(
-                                    "Host ou IP",
-                                    htmlFor="edit-server-host",
-                                    className="hp-label",
-                                ),
-                                dcc.Input(id="edit-server-host", className="hp-input"),
-                                html.Label(
-                                    "Descrição",
-                                    htmlFor="edit-server-description",
-                                    className="hp-label",
-                                ),
-                                dcc.Input(id="edit-server-description", className="hp-input"),
                                 html.Div(
                                     [
+                                        html.P("CONFIGURAÇÃO", className="hp-eyebrow"),
+                                        html.H2("Cadastrar servidor", className="hp-section-title"),
+                                        html.P(
+                                            "Use um nome e o endereço do equipamento na sua rede.",
+                                            className="hp-help",
+                                        ),
+                                        html.Label(
+                                            "Nome", htmlFor="server-name", className="hp-label"
+                                        ),
+                                        dcc.Input(
+                                            id="server-name",
+                                            placeholder="Servidor de mídia",
+                                            className="hp-input",
+                                        ),
+                                        html.Label(
+                                            "Host ou IP",
+                                            htmlFor="server-host",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(
+                                            id="server-host",
+                                            placeholder="192.168.1.50",
+                                            className="hp-input",
+                                        ),
+                                        html.Label(
+                                            "Descrição",
+                                            htmlFor="server-description",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(
+                                            id="server-description",
+                                            placeholder="Opcional",
+                                            className="hp-input",
+                                        ),
                                         html.Button(
-                                            "Salvar servidor",
-                                            id="save-server-button",
+                                            "Cadastrar servidor",
+                                            id="create-server-button",
                                             className="hp-button hp-button-primary",
                                         ),
-                                        dcc.ConfirmDialogProvider(
-                                            html.Button(
-                                                "Excluir",
-                                                id="delete-server-button",
-                                                className="hp-button hp-button-danger",
-                                            ),
-                                            message=(
-                                                "Excluir o servidor e todos os seus serviços? "
-                                                "Esta ação não pode ser desfeita."
-                                            ),
-                                        ),
+                                        html.P(id="server-message", className="hp-message"),
                                     ],
-                                    className="hp-form-actions",
-                                ),
-                                html.P(id="manage-server-message", className="hp-message"),
-                            ],
-                            className="hp-form-card",
-                        ),
-                        html.Div(
-                            [
-                                html.P("SERVIÇOS", className="hp-eyebrow"),
-                                html.Label(
-                                    "Serviço para editar",
-                                    htmlFor="manage-service",
-                                    className="hp-label",
-                                ),
-                                dcc.Dropdown(
-                                    id="manage-service",
-                                    placeholder="Selecione um serviço",
-                                    className="hp-dropdown",
-                                    clearable=False,
-                                ),
-                                html.Label(
-                                    "Nome", htmlFor="edit-service-name", className="hp-label"
-                                ),
-                                dcc.Input(id="edit-service-name", className="hp-input"),
-                                html.Label(
-                                    "Tipo", htmlFor="edit-service-kind", className="hp-label"
-                                ),
-                                dcc.Dropdown(
-                                    id="edit-service-kind",
-                                    options=[
-                                        {"label": "HTTP genérico", "value": "http"},
-                                        {"label": "Jellyfin", "value": "jellyfin"},
-                                        {"label": "Portainer", "value": "portainer"},
-                                        {"label": "Stack arr", "value": "arr"},
-                                    ],
-                                    clearable=False,
-                                    className="hp-dropdown",
-                                ),
-                                html.Label(
-                                    "URL do serviço",
-                                    htmlFor="edit-service-target-url",
-                                    className="hp-label",
-                                ),
-                                dcc.Input(id="edit-service-target-url", className="hp-input"),
-                                dcc.Checklist(
-                                    id="edit-service-enabled",
-                                    options=[{"label": " Monitoramento ativo", "value": "enabled"}],
-                                    value=["enabled"],
-                                    className="hp-checklist",
+                                    className="hp-form-card",
                                 ),
                                 html.Div(
                                     [
+                                        html.P("MONITORAMENTO", className="hp-eyebrow"),
+                                        html.H2("Cadastrar serviço", className="hp-section-title"),
+                                        html.P(
+                                            "Depois do servidor, informe o endereço do serviço.",
+                                            className="hp-help",
+                                        ),
+                                        html.Label(
+                                            "Servidor",
+                                            htmlFor="service-server",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="service-server",
+                                            placeholder="Selecione um servidor",
+                                            className="hp-dropdown",
+                                            clearable=False,
+                                        ),
+                                        html.Label(
+                                            "Nome", htmlFor="service-name", className="hp-label"
+                                        ),
+                                        dcc.Input(
+                                            id="service-name",
+                                            placeholder="Jellyfin",
+                                            className="hp-input",
+                                        ),
+                                        html.Label(
+                                            "Tipo", htmlFor="service-kind", className="hp-label"
+                                        ),
+                                        dcc.Dropdown(
+                                            id="service-kind",
+                                            options=[
+                                                {"label": "HTTP genérico", "value": "http"},
+                                                {"label": "Jellyfin", "value": "jellyfin"},
+                                                {"label": "Portainer", "value": "portainer"},
+                                                {"label": "Stack arr", "value": "arr"},
+                                            ],
+                                            value="http",
+                                            clearable=False,
+                                            className="hp-dropdown",
+                                        ),
+                                        html.Label(
+                                            "URL do serviço",
+                                            htmlFor="service-target-url",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(
+                                            id="service-target-url",
+                                            placeholder="http://192.168.1.50:8096",
+                                            className="hp-input",
+                                        ),
                                         html.Button(
-                                            "Salvar serviço",
-                                            id="save-service-button",
+                                            "Cadastrar serviço",
+                                            id="create-service-button",
                                             className="hp-button hp-button-primary",
                                         ),
-                                        dcc.ConfirmDialogProvider(
-                                            html.Button(
-                                                "Excluir",
-                                                id="delete-service-button",
-                                                className="hp-button hp-button-danger",
-                                            ),
-                                            message=(
-                                                "Excluir este serviço e seu histórico? "
-                                                "Esta ação não pode ser desfeita."
-                                            ),
-                                        ),
+                                        html.P(id="service-message", className="hp-message"),
                                     ],
-                                    className="hp-form-actions",
+                                    className="hp-form-card",
                                 ),
-                                html.P(id="manage-service-message", className="hp-message"),
                             ],
-                            className="hp-form-card",
+                            className="hp-form-grid",
+                        ),
+                        html.H2(
+                            "Gerenciar recursos", className="hp-section-title hp-management-title"
+                        ),
+                        html.Section(
+                            [
+                                html.Div(
+                                    [
+                                        html.P("SERVIDORES", className="hp-eyebrow"),
+                                        html.Label(
+                                            "Servidor para editar",
+                                            htmlFor="manage-server",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="manage-server",
+                                            placeholder="Selecione um servidor",
+                                            className="hp-dropdown",
+                                            clearable=False,
+                                        ),
+                                        html.Label(
+                                            "Nome", htmlFor="edit-server-name", className="hp-label"
+                                        ),
+                                        dcc.Input(id="edit-server-name", className="hp-input"),
+                                        html.Label(
+                                            "Host ou IP",
+                                            htmlFor="edit-server-host",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(id="edit-server-host", className="hp-input"),
+                                        html.Label(
+                                            "Descrição",
+                                            htmlFor="edit-server-description",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(
+                                            id="edit-server-description", className="hp-input"
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Salvar servidor",
+                                                    id="save-server-button",
+                                                    className="hp-button hp-button-primary",
+                                                ),
+                                                dcc.ConfirmDialogProvider(
+                                                    html.Button(
+                                                        "Excluir",
+                                                        id="delete-server-button",
+                                                        className="hp-button hp-button-danger",
+                                                    ),
+                                                    message=(
+                                                        "Excluir o servidor e todos "
+                                                        "os seus serviços? "
+                                                        "Esta ação não pode ser desfeita."
+                                                    ),
+                                                ),
+                                            ],
+                                            className="hp-form-actions",
+                                        ),
+                                        html.P(id="manage-server-message", className="hp-message"),
+                                    ],
+                                    className="hp-form-card",
+                                ),
+                                html.Div(
+                                    [
+                                        html.P("SERVIÇOS", className="hp-eyebrow"),
+                                        html.Label(
+                                            "Serviço para editar",
+                                            htmlFor="manage-service",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="manage-service",
+                                            placeholder="Selecione um serviço",
+                                            className="hp-dropdown",
+                                            clearable=False,
+                                        ),
+                                        html.Label(
+                                            "Nome",
+                                            htmlFor="edit-service-name",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(id="edit-service-name", className="hp-input"),
+                                        html.Label(
+                                            "Tipo",
+                                            htmlFor="edit-service-kind",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="edit-service-kind",
+                                            options=[
+                                                {"label": "HTTP genérico", "value": "http"},
+                                                {"label": "Jellyfin", "value": "jellyfin"},
+                                                {"label": "Portainer", "value": "portainer"},
+                                                {"label": "Stack arr", "value": "arr"},
+                                            ],
+                                            clearable=False,
+                                            className="hp-dropdown",
+                                        ),
+                                        html.Label(
+                                            "URL do serviço",
+                                            htmlFor="edit-service-target-url",
+                                            className="hp-label",
+                                        ),
+                                        dcc.Input(
+                                            id="edit-service-target-url", className="hp-input"
+                                        ),
+                                        dcc.Checklist(
+                                            id="edit-service-enabled",
+                                            options=[
+                                                {
+                                                    "label": " Monitoramento ativo",
+                                                    "value": "enabled",
+                                                }
+                                            ],
+                                            value=["enabled"],
+                                            className="hp-checklist",
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Salvar serviço",
+                                                    id="save-service-button",
+                                                    className="hp-button hp-button-primary",
+                                                ),
+                                                dcc.ConfirmDialogProvider(
+                                                    html.Button(
+                                                        "Excluir",
+                                                        id="delete-service-button",
+                                                        className="hp-button hp-button-danger",
+                                                    ),
+                                                    message=(
+                                                        "Excluir este serviço e seu histórico? "
+                                                        "Esta ação não pode ser desfeita."
+                                                    ),
+                                                ),
+                                            ],
+                                            className="hp-form-actions",
+                                        ),
+                                        html.P(id="manage-service-message", className="hp-message"),
+                                    ],
+                                    className="hp-form-card",
+                                ),
+                            ],
+                            className="hp-form-grid hp-management-grid",
                         ),
                     ],
-                    className="hp-form-grid hp-management-grid",
+                    id="resources-view",
+                    style={"display": "none"},
                 ),
                 html.Div(
                     [
-                        kpi_card("Servidores", "servers-total"),
-                        kpi_card("Serviços", "services-total"),
-                        kpi_card("Disponibilidade 24h", "availability-total"),
-                        kpi_card("Latência média", "latency-average"),
-                        kpi_card("Incidentes abertos", "incidents-open"),
+                        html.Div(
+                            [
+                                kpi_card("Servidores", "servers-total"),
+                                kpi_card("Serviços", "services-total"),
+                                kpi_card("Disponibilidade 24h", "availability-total"),
+                                kpi_card("Latência média", "latency-average"),
+                                kpi_card("Incidentes abertos", "incidents-open"),
+                            ],
+                            className="hp-kpi-grid",
+                        ),
+                        html.Div(
+                            [
+                                dcc.Graph(id="status-chart"),
+                                dcc.Graph(id="availability-chart"),
+                            ],
+                            className="hp-chart-grid",
+                        ),
+                        dcc.Graph(id="latency-chart", style={"marginTop": "14px"}),
+                        html.H2(
+                            "Serviços monitorados",
+                            className="hp-section-title hp-table-title",
+                        ),
+                        html.Div(id="services-table", className="hp-table-wrap"),
                     ],
-                    className="hp-kpi-grid",
+                    id="dashboard-view",
                 ),
-                html.Div(
-                    [dcc.Graph(id="status-chart"), dcc.Graph(id="availability-chart")],
-                    className="hp-chart-grid",
-                ),
-                dcc.Graph(id="latency-chart", style={"marginTop": "14px"}),
-                html.H2("Serviços monitorados", className="hp-section-title hp-table-title"),
-                html.Div(id="services-table", className="hp-table-wrap"),
             ],
             id="dashboard-panel",
             className="hp-dashboard-panel",
@@ -853,6 +931,73 @@ def update_session(
     except DashboardApiError as error:
         return None, str(error), ""
     return token, "", ""
+
+
+@app.callback(
+    Output("auth-view", "data"),
+    Input("show-register-button", "n_clicks"),
+    Input("show-login-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def select_auth_view(
+    _show_register_clicks: int | None,
+    _show_login_clicks: int | None,
+) -> str:
+    if ctx.triggered_id == "show-register-button":
+        return "register"
+    return "login"
+
+
+@app.callback(
+    Output("login-form-card", "style"),
+    Output("register-form-card", "style"),
+    Input("auth-view", "data"),
+)
+def update_auth_view(view: str | None) -> tuple[dict[str, str], dict[str, str]]:
+    if view == "register":
+        return {"display": "none"}, {"display": "flex"}
+    return {"display": "flex"}, {"display": "none"}
+
+
+@app.callback(
+    Output("active-view", "data"),
+    Input("show-dashboard-button", "n_clicks"),
+    Input("show-resources-button", "n_clicks"),
+    Input("auth-token", "data"),
+)
+def select_active_view(
+    _show_dashboard_clicks: int | None,
+    _show_resources_clicks: int | None,
+    _token: str | None,
+) -> str:
+    if ctx.triggered_id == "show-resources-button":
+        return "resources"
+    return "dashboard"
+
+
+@app.callback(
+    Output("dashboard-view", "style"),
+    Output("resources-view", "style"),
+    Output("view-title", "children"),
+    Output("view-eyebrow", "children"),
+    Input("active-view", "data"),
+)
+def update_active_view(
+    view: str | None,
+) -> tuple[dict[str, str], dict[str, str], str, str]:
+    if view == "resources":
+        return (
+            {"display": "none"},
+            {"display": "block"},
+            "Servidores e serviços",
+            "CONFIGURAÇÃO DO HOMELAB",
+        )
+    return (
+        {"display": "block"},
+        {"display": "none"},
+        "HomeLab Pulse",
+        "PAINEL DE MONITORAMENTO",
+    )
 
 
 @app.callback(
