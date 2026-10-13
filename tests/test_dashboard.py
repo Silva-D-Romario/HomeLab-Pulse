@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import httpx
 import pytest
 from httpx import AsyncClient
@@ -8,10 +10,23 @@ from homelab_pulse.dashboard import (
     build_services_table,
     create_server,
     create_service,
+    delete_server_resource,
+    delete_service_resource,
+    fetch_all_services,
     fetch_servers,
+    keep_available_value,
+    load_resource_data,
+    manage_server_resource,
+    manage_service_resource,
+    populate_server_form,
+    populate_service_form,
+    register_user,
     submit_server,
     submit_service,
-    update_server_options,
+    update_resource_options,
+    update_server_resource,
+    update_service_resource,
+    update_session,
     update_visibility,
 )
 from homelab_pulse.dashboard import app as dashboard_app
@@ -153,11 +168,6 @@ def test_server_form_creates_resource_and_refreshes_options(
         )
 
     monkeypatch.setattr("homelab_pulse.dashboard.create_server", fake_create_server)
-    monkeypatch.setattr(
-        "homelab_pulse.dashboard.fetch_servers",
-        lambda _token: [{"id": "server-1", "name": "Servidor principal"}],
-    )
-
     result = submit_server(
         1,
         "jwt-token",
@@ -166,7 +176,8 @@ def test_server_form_creates_resource_and_refreshes_options(
         "  192.168.1.50  ",
         "  Homelab  ",
     )
-    options, selected = update_server_options("jwt-token", result[0], None)
+    servers = [{"id": "server-1", "name": "Servidor principal"}]
+    option_result = update_resource_options(servers, [], None, None, None)
 
     assert result == (
         1,
@@ -182,8 +193,8 @@ def test_server_form_creates_resource_and_refreshes_options(
         "host": "192.168.1.50",
         "description": "Homelab",
     }
-    assert options == [{"label": "Servidor principal", "value": "server-1"}]
-    assert selected == "server-1"
+    assert option_result[0] == [{"label": "Servidor principal", "value": "server-1"}]
+    assert option_result[1] == "server-1"
 
 
 def test_service_form_creates_resource(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -271,6 +282,287 @@ def test_dashboard_api_helpers_send_token_and_payload(
         "host": "192.168.1.50",
         "description": None,
     }
+
+
+def test_registration_and_crud_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests: list[tuple[str, str, dict[str, object]]] = []
+
+    def response(method: str, url: str, status_code: int = 200) -> httpx.Response:
+        return httpx.Response(status_code, request=httpx.Request(method, url), json={})
+
+    def fake_post(url: str, **kwargs: object) -> httpx.Response:
+        requests.append(("POST", url, kwargs))
+        if url.endswith("/auth/login"):
+            return httpx.Response(
+                200,
+                request=httpx.Request("POST", url),
+                json={"access_token": "new-token"},
+            )
+        return response("POST", url, 201)
+
+    def fake_patch(url: str, **kwargs: object) -> httpx.Response:
+        requests.append(("PATCH", url, kwargs))
+        return response("PATCH", url)
+
+    def fake_delete(url: str, **kwargs: object) -> httpx.Response:
+        requests.append(("DELETE", url, kwargs))
+        return response("DELETE", url, 204)
+
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.post", fake_post)
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.patch", fake_patch)
+    monkeypatch.setattr("homelab_pulse.dashboard.httpx.delete", fake_delete)
+
+    token = register_user("Romário", "romario@example.com", "SenhaForte@2026")
+    update_server_resource("jwt", "server-1", "Homelab", "192.168.1.50", None)
+    update_service_resource(
+        "jwt", "service-1", "Jellyfin", "jellyfin", "http://jellyfin:8096", True
+    )
+    delete_service_resource("jwt", "service-1")
+    delete_server_resource("jwt", "server-1")
+
+    assert token == "new-token"
+    assert [request[0] for request in requests] == [
+        "POST",
+        "POST",
+        "PATCH",
+        "PATCH",
+        "DELETE",
+        "DELETE",
+    ]
+
+
+def test_resource_loading_options_and_edit_forms(monkeypatch: pytest.MonkeyPatch) -> None:
+    servers = [
+        {
+            "id": "server-1",
+            "name": "Homelab",
+            "host": "192.168.1.50",
+            "description": "Servidor principal",
+        }
+    ]
+    services = [
+        {
+            "id": "service-1",
+            "server_id": "server-1",
+            "server_name": "Homelab",
+            "name": "Jellyfin",
+            "kind": "jellyfin",
+            "target_url": "http://jellyfin:8096",
+            "enabled": True,
+        }
+    ]
+    monkeypatch.setattr("homelab_pulse.dashboard.fetch_servers", lambda _token: servers)
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.fetch_all_services", lambda _token, _servers: services
+    )
+
+    loaded_servers, loaded_services = load_resource_data("jwt", 0, 0)
+    options = update_resource_options(loaded_servers, loaded_services, None, None, None)
+
+    assert options[1] == "server-1"
+    assert options[3] == "server-1"
+    assert options[5] == "service-1"
+    assert options[4][0]["label"] == "Homelab — Jellyfin"
+    assert keep_available_value(options[0], "missing") == "server-1"
+    assert populate_server_form("server-1", servers) == (
+        "Homelab",
+        "192.168.1.50",
+        "Servidor principal",
+    )
+    assert populate_service_form("service-1", services) == (
+        "Jellyfin",
+        "jellyfin",
+        "http://jellyfin:8096",
+        ["enabled"],
+    )
+    assert populate_server_form(None, servers) == ("", "", "")
+    assert populate_service_form(None, services) == ("", None, "", [])
+    assert load_resource_data(None, 0, 0) == ([], [])
+
+
+def test_fetch_all_services_adds_server_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.fetch_services",
+        lambda _token, server_id: [
+            {
+                "id": f"service-{server_id}",
+                "name": "Jellyfin",
+            }
+        ],
+    )
+
+    services = fetch_all_services(
+        "jwt",
+        [
+            {"id": "server-1", "name": "Homelab"},
+            {"id": "server-2", "name": "NAS"},
+        ],
+    )
+
+    assert [service["server_name"] for service in services] == ["Homelab", "NAS"]
+
+
+def test_session_callback_supports_registration_login_and_logout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("homelab_pulse.dashboard.register_user", lambda *_args: "new-token")
+    monkeypatch.setattr("homelab_pulse.dashboard.authenticate", lambda *_args: "login-token")
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="register-button")
+    )
+    registered = update_session(
+        None,
+        1,
+        None,
+        None,
+        None,
+        " Romário ",
+        " romario@example.com ",
+        "SenhaForte@2026",
+        "SenhaForte@2026",
+    )
+    mismatch = update_session(
+        None,
+        1,
+        None,
+        None,
+        None,
+        "Romário",
+        "romario@example.com",
+        "SenhaForte@2026",
+        "diferente",
+    )
+
+    monkeypatch.setattr("homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="login-button"))
+    logged_in = update_session(
+        1, None, None, "romario@example.com", "SenhaForte@2026", None, None, None, None
+    )
+    missing_login = update_session(1, None, None, None, None, None, None, None, None)
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="logout-button")
+    )
+    logged_out = update_session(None, None, 1, None, None, None, None, None, None)
+
+    assert registered == ("new-token", "", "Conta criada com sucesso.")
+    assert mismatch[2] == "As senhas não coincidem."
+    assert logged_in == ("login-token", "", "")
+    assert missing_login[1] == "Informe e-mail e senha."
+    assert logged_out == (None, "", "")
+
+
+def test_management_callbacks_update_resources(monkeypatch: pytest.MonkeyPatch) -> None:
+    server_changes: dict[str, object] = {}
+    service_changes: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="save-server-button")
+    )
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.update_server_resource",
+        lambda *args: server_changes.update(args=args),
+    )
+    server_result = manage_server_resource(
+        1, None, "jwt", 0, "server-1", " Homelab ", " 192.168.1.50 ", " Principal "
+    )
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="save-service-button")
+    )
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.update_service_resource",
+        lambda *args: service_changes.update(args=args),
+    )
+    service_result = manage_service_resource(
+        1,
+        None,
+        "jwt",
+        0,
+        "service-1",
+        " Jellyfin ",
+        "jellyfin",
+        " http://host.docker.internal:8096 ",
+        ["enabled"],
+    )
+
+    assert server_result[0] == 1
+    assert server_changes["args"] == (
+        "jwt",
+        "server-1",
+        "Homelab",
+        "192.168.1.50",
+        "Principal",
+    )
+    assert service_result[0] == 1
+    assert service_changes["args"] == (
+        "jwt",
+        "service-1",
+        "Jellyfin",
+        "jellyfin",
+        "http://host.docker.internal:8096",
+        True,
+    )
+
+
+def test_management_callbacks_delete_resources(monkeypatch: pytest.MonkeyPatch) -> None:
+    deleted: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.delete_server_resource",
+        lambda token, resource_id: deleted.append((token, resource_id)),
+    )
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.delete_service_resource",
+        lambda token, resource_id: deleted.append((token, resource_id)),
+    )
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="delete-server-button")
+    )
+    server_result = manage_server_resource(None, 1, "jwt", 0, "server-1", None, None, None)
+
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="delete-service-button")
+    )
+    service_result = manage_service_resource(None, 1, "jwt", 0, "service-1", None, None, None, [])
+
+    assert deleted == [("jwt", "server-1"), ("jwt", "service-1")]
+    assert server_result[0] == 1
+    assert service_result[0] == 1
+
+
+def test_forms_reject_missing_authentication_and_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="save-server-button")
+    )
+    assert submit_server(1, None, 0, None, None, None)[1] == "Entre novamente para cadastrar."
+    assert submit_server(1, "jwt", 0, None, None, None)[1] == (
+        "Informe o nome e o host do servidor."
+    )
+    assert submit_service(1, None, 0, None, None, "http", None)[1] == (
+        "Entre novamente para cadastrar."
+    )
+    assert submit_service(1, "jwt", 0, None, None, "http", None)[1] == (
+        "Selecione o servidor e informe nome e URL do serviço."
+    )
+    assert manage_server_resource(None, None, None, 0, None, None, None, None)[1] == (
+        "Selecione um servidor."
+    )
+    assert manage_server_resource(None, None, "jwt", 0, "server-1", None, None, None)[1] == (
+        "Informe o nome e o host do servidor."
+    )
+    monkeypatch.setattr(
+        "homelab_pulse.dashboard.ctx", SimpleNamespace(triggered_id="save-service-button")
+    )
+    assert manage_service_resource(None, None, None, 0, None, None, None, None, [])[1] == (
+        "Selecione um serviço."
+    )
+    assert (
+        manage_service_resource(None, None, "jwt", 0, "service-1", None, None, None, [])[1]
+        == "Informe nome, tipo e URL do serviço."
+    )
 
 
 @pytest.mark.parametrize(
